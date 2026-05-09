@@ -1,0 +1,32 @@
+name: Report Cron Trigger
+
+"on":
+  schedule:
+    - cron: '30 9 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: report-cron-trigger
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  trigger_report:
+    name: Trigger report endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          [ -n "${{ secrets.REPORT_CRON_URL }}" ] || (echo "Missing REPORT_CRON_URL" && exit 1)
+          [ -n "${{ secrets.CRON_SECRET }}" ] || (echo "Missing CRON_SECRET" && exit 1)
+
+      - name: Call cron endpoint
+        run: |
+          curl -sS --fail-with-body \
+            -X GET "${{ secrets.REPORT_CRON_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "User-Agent: github-actions-cron/1.0"

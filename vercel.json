@@ -2,7 +2,7 @@
     "version": 2,
     "git": {
         "deploymentEnabled": {
-            "main": false
+            "main": true
         }
     },
     "functions": {
@@ -14,7 +14,7 @@
     "crons": [
         {
             "path": "/api/cron",
-            "schedule": "0 10 * * 1-5"
+            "schedule": "30 9 * * 1-5"
         }
     ]
 }

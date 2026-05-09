@@ -274,7 +274,9 @@ pnpm dlx vercel --prod --yes
 Cron schedule is configured in vercel.json:
 
 - path: /api/cron
-- schedule: `0 10 * * 1-5`
+- schedule: `40 9 * * 1-5` (UTC), equivalent to 16:40 Monday-Friday in Vietnam time
+
+Note: GitHub Actions in this repository is used for CI/CD validation and deployment only, not for scheduled cron triggering.
 
 ## CI and Quality
 
