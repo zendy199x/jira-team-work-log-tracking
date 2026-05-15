@@ -305,7 +305,7 @@ export class ReportController {
             retryCountTitle: 'Retry Count Today',
             localTimeTitle: 'Local Time',
             confirm: 'Confirm Retry',
-            buttonRetrying: 'Đang gửi lại',
+            buttonRetrying: 'Retrying',
             cancel: 'Cancel',
             statusIdle: 'You have not retried any report today.',
             statusCanceled: 'Action canceled. No report was sent.',
