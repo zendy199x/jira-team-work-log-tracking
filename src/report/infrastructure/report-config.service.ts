@@ -1,12 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+
 import type { ReportConfigPort } from '../domain/report.ports';
 import {
-    ChatMode,
-    type AggregationDebugConfig,
-    type ChatDeliveryConfig,
-    type ReportRuntimeConfig,
+  type AggregationDebugConfig,
+  type ChatDeliveryConfig,
+  ChatMode,
+  type ReportRuntimeConfig,
 } from '../domain/report.types';
-import { ReportDate, TeamName, Timezone } from '../domain/value-objects';
+import {
+  ReportDate,
+  TeamName,
+  Timezone,
+} from '../domain/value-objects';
 
 @Injectable()
 export class ReportConfigService implements ReportConfigPort {
@@ -14,19 +22,7 @@ export class ReportConfigService implements ReportConfigPort {
   private static readonly JIRA_REPORT_SELECTED_ITEM =
     'com.atlassian.plugins.atlassian-connect-plugin:com.gebsun.atlassian.reports.free__report';
   private static readonly JIRA_WORK_LOG_ISSUE_TYPES = [
-    'Sub-Bug',
-    'Sub-Env and SCM',
-    'Sub-Imp',
-    'Sub-Legacy Bug',
-    'Sub PML',
-    'Sub Project Kaizen',
-    'Sub-Test',
-    'Sub Skill Up',
-    'Sub-task',
-    'Sub-ritual',
-    'Sub Refinement',
-    'Sub-overhead',
-    'Sub Test Execution',
+    "Sub-Bug", "Sub-Env and SCM", "Sub-Imp", "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", "Sub-Test", "Sub Skill Up", "Sub-task", "Sub-ritual", "Sub Refinement", "Sub-overhead", "Sub Test Execution", "Sub Automation"
   ];
 
   getRuntimeConfig(): ReportRuntimeConfig {
@@ -209,9 +205,9 @@ export class ReportConfigService implements ReportConfigPort {
     const rawFilters = (process.env.REPORT_DEBUG_AUTHORS || '').trim();
     const authorFilters = rawFilters
       ? rawFilters
-          .split(',')
-          .map((item) => this.normalizeAuthorName(item).toLowerCase())
-          .filter(Boolean)
+        .split(',')
+        .map((item) => this.normalizeAuthorName(item).toLowerCase())
+        .filter(Boolean)
       : [];
 
     return {
