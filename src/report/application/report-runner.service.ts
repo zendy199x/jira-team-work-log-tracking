@@ -9,6 +9,7 @@ import {
     type ReportConfigPort,
 } from '../domain/report.ports';
 import type { GoogleChatEvent } from '../domain/report.types';
+import { formatHoursFromSeconds, normalizeAuthorName } from '../domain/report.utils';
 import { ReportDate, Timezone } from '../domain/value-objects';
 
 @Injectable()
@@ -65,7 +66,7 @@ export class ReportRunnerService {
     const summary = {
       source,
       reportDate: cfg.reportDate,
-      totalHours: this.formatHoursFromSeconds(totalSeconds),
+      totalHours: formatHoursFromSeconds(totalSeconds),
       userCount,
     };
 
@@ -152,17 +153,6 @@ export class ReportRunnerService {
       return true;
     }
 
-    return filters.includes(this.normalizeAuthorName(author).toLowerCase());
-  }
-
-  private normalizeAuthorName(rawName: string): string {
-    const name = rawName.trim();
-    const shortName = name.split('(')[0]?.trim();
-    return shortName || name;
-  }
-
-  private formatHoursFromSeconds(totalSeconds: number): string {
-    const hours = totalSeconds / 3600;
-    return `${String(hours)}h`;
+    return filters.includes(normalizeAuthorName(author).toLowerCase());
   }
 }

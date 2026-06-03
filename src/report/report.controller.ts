@@ -387,7 +387,12 @@ export class ReportController {
           titleEl.textContent = localizedTitle;
           questionEl.textContent = i18n.question;
           countTitleEl.textContent = i18n.retryCountTitle;
-          if (loadingTimerId === null) {
+          if (loadingTimerId !== null) {
+            // Restart loading animation so button text switches language immediately
+            clearInterval(loadingTimerId);
+            loadingTimerId = null;
+            startConfirmLoading();
+          } else {
             confirmBtn.textContent = i18n.confirm;
             confirmBtn.style.width = 'auto';
             confirmBtn.style.width = confirmBtn.offsetWidth + 'px';
@@ -399,15 +404,15 @@ export class ReportController {
         }
 
         function startConfirmLoading() {
-          var i18n = getI18n();
           var dots = ['.', '..', '...'];
           var frame = 0;
 
-          confirmBtn.textContent = i18n.buttonRetrying + dots[frame];
+          confirmBtn.textContent = getI18n().buttonRetrying + dots[frame];
 
           loadingTimerId = setInterval(function () {
             frame = (frame + 1) % dots.length;
-            confirmBtn.textContent = i18n.buttonRetrying + dots[frame];
+            // Always read current language so switching lang mid-retry updates instantly
+            confirmBtn.textContent = getI18n().buttonRetrying + dots[frame];
           }, 420);
         }
 
@@ -451,21 +456,35 @@ export class ReportController {
           countEl.textContent = String(state.count);
         }
 
+        // Cache formatters — created once, pinned to Vietnam timezone (Asia/Ho_Chi_Minh)
+        var VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
+        var viFormatter = new Intl.DateTimeFormat('vi-VN', {
+          timeZone: VN_TIMEZONE,
+          year: 'numeric',
+          month: 'numeric',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZoneName: 'shortOffset',
+        });
+        var enFormatter = new Intl.DateTimeFormat('en-US', {
+          timeZone: VN_TIMEZONE,
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZoneName: 'shortOffset',
+        });
+
         function refreshLocalTime() {
           var now = new Date();
 
           if (currentLanguage === 'vi') {
-            var viFormatter = new Intl.DateTimeFormat('vi-VN', {
-              year: 'numeric',
-              month: 'numeric',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: false,
-              timeZoneName: 'shortOffset',
-            });
-
             var parts = viFormatter.formatToParts(now);
             var hour = parts.find(function (part) { return part.type === 'hour'; })?.value || '00';
             var minute = parts.find(function (part) { return part.type === 'minute'; })?.value || '00';
@@ -473,36 +492,15 @@ export class ReportController {
             var day = parts.find(function (part) { return part.type === 'day'; })?.value || '';
             var month = parts.find(function (part) { return part.type === 'month'; })?.value || '';
             var year = parts.find(function (part) { return part.type === 'year'; })?.value || '';
-            var timeZoneName = parts.find(function (part) { return part.type === 'timeZoneName'; })?.value || 'GMT';
+            var timeZoneName = parts.find(function (part) { return part.type === 'timeZoneName'; })?.value || 'GMT+7';
 
             localTimeEl.textContent =
-              hour +
-              ':' +
-              minute +
-              ':' +
-              second +
-              ' ngày ' +
-              day +
-              ' tháng ' +
-              month +
-              ' năm ' +
-              year +
-              ' (' +
-              timeZoneName +
-              ')';
+              hour + ':' + minute + ':' + second +
+              ' ngày ' + day + ' tháng ' + month + ' năm ' + year +
+              ' (' + timeZoneName + ')';
             return;
           }
 
-          var enFormatter = new Intl.DateTimeFormat('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false,
-            timeZoneName: 'shortOffset',
-          });
           var enParts = enFormatter.formatToParts(now);
           var enMonth = enParts.find(function (part) { return part.type === 'month'; })?.value || '';
           var enDay = enParts.find(function (part) { return part.type === 'day'; })?.value || '';
@@ -510,23 +508,12 @@ export class ReportController {
           var enHour = enParts.find(function (part) { return part.type === 'hour'; })?.value || '00';
           var enMinute = enParts.find(function (part) { return part.type === 'minute'; })?.value || '00';
           var enSecond = enParts.find(function (part) { return part.type === 'second'; })?.value || '00';
-          var enTimeZone = enParts.find(function (part) { return part.type === 'timeZoneName'; })?.value || 'GMT';
+          var enTimeZone = enParts.find(function (part) { return part.type === 'timeZoneName'; })?.value || 'GMT+7';
 
           localTimeEl.textContent =
-            enMonth +
-            ' ' +
-            enDay +
-            ', ' +
-            enYear +
-            ', ' +
-            enHour +
-            ':' +
-            enMinute +
-            ':' +
-            enSecond +
-            ' (' +
-            enTimeZone +
-            ')';
+            enMonth + ' ' + enDay + ', ' + enYear + ', ' +
+            enHour + ':' + enMinute + ':' + enSecond +
+            ' (' + enTimeZone + ')';
         }
 
         function setStatus(text, kind) {
@@ -587,6 +574,12 @@ export class ReportController {
               return;
             }
 
+            if (statusState.errorType === 'retryFailed') {
+              setStatus(i18n.statusRetryFailedFallback, 'error');
+              return;
+            }
+
+            // Raw server message (not translatable) or generic fallback
             setStatus(statusState.message || i18n.statusErrorFallback, 'error');
           }
         }
@@ -633,9 +626,15 @@ export class ReportController {
             }
 
             if (!response.ok || !data || data.ok !== true) {
-              var i18n = getI18n();
-              var errorMessage = (data && data.message) || i18n.statusRetryFailedFallback;
-              throw new Error(errorMessage);
+              var serverMessage = (data && data.message) || null;
+              if (serverMessage) {
+                // Server-provided message (always raw, store as-is)
+                throw new Error(serverMessage);
+              }
+              // No server message — use a typed error so renderStatus can translate it
+              statusState = { kind: 'error', errorType: 'retryFailed' };
+              renderStatus();
+              return;
             }
 
             state = {

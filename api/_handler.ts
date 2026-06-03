@@ -3,7 +3,7 @@ import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 
 import { AppModule } from '../src/app.module';
 
@@ -21,6 +21,24 @@ async function getHandler(): Promise<ExpressHandler> {
     }
 
     const expressApp = express();
+
+    // Vercel Analytics – track each API request with path and method
+    // Uses dynamic import because @vercel/analytics/server is ESM-only
+    expressApp.use((req: Request, res: Response, next: NextFunction) => {
+        res.on('finish', () => {
+            import('@vercel/analytics/server')
+                .then(({ track }) =>
+                    track('api_request', {
+                        path: req.path,
+                        method: req.method,
+                        status: String(res.statusCode),
+                    }),
+                )
+                .catch(() => {});
+        });
+        next();
+    });
+
     expressApp.use((req: ApiRequest, _res: unknown, next: () => void) => {
         if (req.url === '/api') {
             req.url = '/';

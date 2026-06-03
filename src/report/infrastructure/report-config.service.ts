@@ -10,6 +10,7 @@ import {
   ChatMode,
   type ReportRuntimeConfig,
 } from '../domain/report.types';
+import { normalizeAuthorName } from '../domain/report.utils';
 import {
   ReportDate,
   TeamName,
@@ -22,7 +23,20 @@ export class ReportConfigService implements ReportConfigPort {
   private static readonly JIRA_REPORT_SELECTED_ITEM =
     'com.atlassian.plugins.atlassian-connect-plugin:com.gebsun.atlassian.reports.free__report';
   private static readonly JIRA_WORK_LOG_ISSUE_TYPES = [
-    "Sub-Bug", "Sub-Env and SCM", "Sub-Imp", "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", "Sub-Test", "Sub Skill Up", "Sub-task", "Sub-ritual", "Sub Refinement", "Sub-overhead", "Sub Test Execution", "Sub Automation"
+    'Sub-Bug',
+    'Sub-Env and SCM',
+    'Sub-Imp',
+    'Sub-Legacy Bug',
+    'Sub PML',
+    'Sub Project Kaizen',
+    'Sub-Test',
+    'Sub Skill Up',
+    'Sub-task',
+    'Sub-ritual',
+    'Sub Refinement',
+    'Sub-overhead',
+    'Sub Test Execution',
+    'Sub Automation',
   ];
 
   getRuntimeConfig(): ReportRuntimeConfig {
@@ -50,15 +64,6 @@ export class ReportConfigService implements ReportConfigPort {
         jiraDomain,
         jiraEmail: this.requireEnv('JIRA_EMAIL'),
         jiraApiToken: this.requireEnv('JIRA_API_TOKEN'),
-        requestConfig: {
-          auth: {
-            username: this.requireEnv('JIRA_EMAIL'),
-            password: this.requireEnv('JIRA_API_TOKEN'),
-          },
-          headers: {
-            Accept: 'application/json',
-          },
-        },
       },
       chat: this.getChatDeliveryConfig(),
     };
@@ -206,7 +211,7 @@ export class ReportConfigService implements ReportConfigPort {
     const authorFilters = rawFilters
       ? rawFilters
         .split(',')
-        .map((item) => this.normalizeAuthorName(item).toLowerCase())
+        .map((item) => normalizeAuthorName(item).toLowerCase())
         .filter(Boolean)
       : [];
 
@@ -214,12 +219,6 @@ export class ReportConfigService implements ReportConfigPort {
       enabled,
       authorFilters,
     };
-  }
-
-  private normalizeAuthorName(rawName: string): string {
-    const name = rawName.trim();
-    const shortName = name.split('(')[0]?.trim();
-    return shortName || name;
   }
 
   private isTruthyValue(value: string): boolean {
