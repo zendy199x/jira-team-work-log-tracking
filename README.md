@@ -280,7 +280,9 @@ pnpm dlx vercel --prod --yes
 Cron schedule is configured in vercel.json:
 
 - path: /api/cron
-- schedule: `0 10 * * 1-5`
+- schedule: `40 9 * * 1-5`
+
+Main branch is configured for automatic deployment. Any change to `vercel.json` on `main` will be applied after the next production deployment.
 
 ## CI and Quality
 

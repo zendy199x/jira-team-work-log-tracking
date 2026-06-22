@@ -74,6 +74,41 @@ describe('ReportAggregationService', () => {
     expect(result.users.Tyler.logs['2026-05-09']).toBe(3600);
   });
 
+  it('keeps at most two words for long custom author names', () => {
+    const issues = [
+      {
+        key: 'BKM4-2A',
+        fields: {
+          worklog: {
+            worklogs: [
+              {
+                id: 'w4a',
+                author: { displayName: 'Mark Vu Nguyen' },
+                timeSpentSeconds: 7200,
+                started: '2026-05-09T06:00:00.000Z',
+              },
+              {
+                id: 'w4b',
+                author: { displayName: 'Mark Vu (BKM4)' },
+                timeSpentSeconds: 3600,
+                started: '2026-05-09T08:00:00.000Z',
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = service.aggregateByReportDate(
+      issues,
+      ReportDate.from('2026-05-09'),
+      Timezone.from('UTC'),
+    );
+
+    expect(Object.keys(result.users)).toEqual(['Mark Vu']);
+    expect(result.users['Mark Vu'].logs['2026-05-09']).toBe(10800);
+  });
+
   it('uses Unknown author fallback and ignores issues without work logs', () => {
     const issues = [
       {
