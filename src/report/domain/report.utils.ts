@@ -9,8 +9,14 @@ export function normalizeAuthorName(rawName: string): string {
 
 /**
  * Converts total seconds to a human-readable hours string.
- * e.g. 5400 → "1.5h"
+ * e.g. 5400 → "1.5h", 4800 → "1.33h"
  */
 export function formatHoursFromSeconds(totalSeconds: number): string {
-  return `${totalSeconds / 3600}h`;
+  const hours = totalSeconds / 3600;
+  const roundedHours = Math.round(hours * 100) / 100;
+  const normalized = Number.isInteger(roundedHours)
+    ? String(roundedHours)
+    : roundedHours.toFixed(2).replace(/\.0+$|0+$/g, '');
+
+  return `${normalized}h`;
 }

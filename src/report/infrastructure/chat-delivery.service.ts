@@ -1,13 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { JWT } from 'google-auth-library';
+
+import { Injectable } from '@nestjs/common';
+
 import type { ChatGatewayPort } from '../domain/report.ports';
-import { ChatMode, type AggregatedData, type AggregatedUser, type ChatDeliveryConfig } from '../domain/report.types';
+import {
+  type AggregatedData,
+  type AggregatedUser,
+  type ChatDeliveryConfig,
+  ChatMode,
+} from '../domain/report.types';
 import { formatHoursFromSeconds } from '../domain/report.utils';
 
 @Injectable()
 export class ChatDeliveryService implements ChatGatewayPort {
-  private readonly logger = new Logger(ChatDeliveryService.name);
   private static readonly MAX_REPORT_ROWS = 50;
 
   async sendReport(
@@ -16,46 +22,39 @@ export class ChatDeliveryService implements ChatGatewayPort {
     jiraCheckUrl: string,
   ): Promise<void> {
     const text = this.buildChatTextReport(data);
-    await this.postToChat(chat, { text });
-
-    try {
-      const buttons = [
-        ...this.buildRetryButtons(chat),
-        {
-          text: 'Check in Jira',
-          onClick: {
-            openLink: {
-              url: jiraCheckUrl,
-            },
+    const buttons = [
+      ...this.buildRetryButtons(chat),
+      {
+        text: 'Check in Jira',
+        onClick: {
+          openLink: {
+            url: jiraCheckUrl,
           },
         },
-      ];
+      },
+    ];
 
-      await this.postToChat(chat, {
-        cardsV2: [
-          {
-            cardId: 'jira-check',
-            card: {
-              sections: [
-                {
-                  widgets: [
-                    {
-                      buttonList: {
-                        buttons,
-                      },
+    await this.postToChat(chat, {
+      text,
+      cardsV2: [
+        {
+          cardId: 'jira-check',
+          card: {
+            sections: [
+              {
+                widgets: [
+                  {
+                    buttonList: {
+                      buttons,
                     },
-                  ],
-                },
-              ],
-            },
+                  },
+                ],
+              },
+            ],
           },
-        ],
-      });
-    } catch (error) {
-      this.logger.warn(
-        `Failed to send Jira button card, text report already sent: ${(error as Error).message}`,
-      );
-    }
+        },
+      ],
+    });
   }
 
   private buildChatTextReport(data: {

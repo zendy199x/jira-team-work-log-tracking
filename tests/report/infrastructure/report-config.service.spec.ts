@@ -1,4 +1,7 @@
-import { ReportConfigService } from '../../../src/report/infrastructure/report-config.service';
+import { normalizeAuthorName } from '../../../src/report/domain/report.utils';
+import {
+  ReportConfigService,
+} from '../../../src/report/infrastructure/report-config.service';
 
 describe('ReportConfigService', () => {
   const originalEnv = process.env;
@@ -289,8 +292,6 @@ describe('ReportConfigService', () => {
 
   it('falls back to full raw author name when short name is empty', () => {
     setBaseEnv();
-    const service = new ReportConfigService();
-
-    expect(service['normalizeAuthorName']('()')).toBe('()');
+    expect(normalizeAuthorName('()')).toBe('()');
   });
 });

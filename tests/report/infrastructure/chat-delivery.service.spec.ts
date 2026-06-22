@@ -1,7 +1,13 @@
 import axios from 'axios';
 import { JWT } from 'google-auth-library';
+
 import { ChatMode } from '../../../src/report/domain/report.types';
-import { ChatDeliveryService } from '../../../src/report/infrastructure/chat-delivery.service';
+import {
+  formatHoursFromSeconds,
+} from '../../../src/report/domain/report.utils';
+import {
+  ChatDeliveryService,
+} from '../../../src/report/infrastructure/chat-delivery.service';
 
 const authorizeMock = jest.fn().mockResolvedValue({ access_token: 'mock-token' });
 
@@ -21,7 +27,7 @@ describe('ChatDeliveryService', () => {
     authorizeMock.mockResolvedValue({ access_token: 'mock-token' });
   });
 
-  it('sends webhook text and card payload', async () => {
+  it('sends webhook report and actions in one payload', async () => {
     postMock.mockImplementation(async () => ({}));
     const service = new ChatDeliveryService();
 
@@ -36,7 +42,13 @@ describe('ChatDeliveryService', () => {
       'https://jira/check',
     );
 
-    expect(postMock).toHaveBeenCalledTimes(2);
+    expect(postMock).toHaveBeenCalledTimes(1);
+    const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(payload.cardsV2).toBeDefined();
+    expect(payload.text).toBeDefined();
+    expect(JSON.stringify(payload)).toContain('-+-BKM4 WORK LOG REPORT-+-');
+    expect(JSON.stringify(payload)).toContain('Date: May 9');
+    expect(JSON.stringify(payload)).toContain('```');
   });
 
   it('renders no-data report text', async () => {
@@ -54,10 +66,8 @@ describe('ChatDeliveryService', () => {
       'https://jira/check',
     );
 
-    expect(postMock).toHaveBeenCalledWith(
-      'https://chat.example.com',
-      expect.objectContaining({ text: expect.stringContaining('No work log data at this time') }),
-    );
+    const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(JSON.stringify(payload)).toContain('No work log data at this time');
   });
 
   it('sends app-mode message with bearer token', async () => {
@@ -106,7 +116,7 @@ describe('ChatDeliveryService', () => {
       'https://jira/check',
     );
 
-    const cardPayload = postMock.mock.calls[1]?.[1] as Record<string, unknown>;
+    const cardPayload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(JSON.stringify(cardPayload)).toContain('"openLink"');
     expect(JSON.stringify(cardPayload)).toContain('http://localhost:3000/reports/retry?token=abc');
     expect(JSON.stringify(cardPayload)).not.toContain('"retry_report"');
@@ -129,23 +139,22 @@ describe('ChatDeliveryService', () => {
     ).rejects.toThrow('Missing webhook URL for webhook mode');
   });
 
-  it('warns when card send fails after text was sent', async () => {
-    postMock.mockImplementationOnce(async () => ({})).mockRejectedValueOnce(new Error('card-failed'));
+  it('throws when sending combined report payload fails', async () => {
+    postMock.mockRejectedValueOnce(new Error('send-failed'));
     const service = new ChatDeliveryService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
 
-    await service.sendReport(
-      { mode: ChatMode.WEBHOOK, webhook: 'https://chat.example.com', reportUrl: 'https://app/retry' },
-      {
-        users: { Alice: { logs: { '2026-05-09': 600 } } },
-        reportDate: '2026-05-09',
-        reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
-      },
-      'https://jira/check',
-    );
-
-    expect(warnSpy).toHaveBeenCalled();
+    await expect(
+      service.sendReport(
+        { mode: ChatMode.WEBHOOK, webhook: 'https://chat.example.com', reportUrl: 'https://app/retry' },
+        {
+          users: { Alice: { logs: { '2026-05-09': 600 } } },
+          reportDate: '2026-05-09',
+          reportDateTimeLabel: 'May 9',
+          reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        },
+        'https://jira/check',
+      ),
+    ).rejects.toThrow('send-failed');
   });
 
   it('throws when app-mode cannot obtain access token', async () => {
@@ -189,7 +198,8 @@ describe('ChatDeliveryService', () => {
     expect(output).toContain('Total');
     expect(output).toContain('50. User 50');
     expect(output).not.toContain('51. User 51');
-    expect(service['formatHoursFromSeconds'](1800)).toBe('0.5h');
+    expect(formatHoursFromSeconds(1800)).toBe('0.5h');
+    expect(formatHoursFromSeconds(4800)).toBe('1.33h');
   });
 
   it('filters out users with zero seconds in helper output', () => {

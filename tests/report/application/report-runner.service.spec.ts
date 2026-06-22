@@ -1,4 +1,5 @@
 import { ReportRunnerService } from '../../../src/report/application/report-runner.service';
+import { formatHoursFromSeconds, normalizeAuthorName } from '../../../src/report/domain/report.utils';
 
 function hasLogMessage(logCalls: unknown[][], keyword: string): boolean {
   return logCalls.some((call) => {
@@ -206,11 +207,12 @@ describe('ReportRunnerService', () => {
   });
 
   it('covers helper methods edge cases', () => {
-    expect(service['normalizeAuthorName']('  Alice (BKM4)  ')).toBe('Alice');
-    expect(service['normalizeAuthorName']('()')).toBe('()');
+    expect(normalizeAuthorName('  Alice (BKM4)  ')).toBe('Alice');
+    expect(normalizeAuthorName('()')).toBe('()');
     expect(service['shouldLogDebugForAuthor']([], 'Anyone')).toBe(true);
     expect(service['shouldLogDebugForAuthor'](['alice'], 'alice')).toBe(true);
     expect(service['shouldLogDebugForAuthor'](['alice'], 'Bob')).toBe(false);
-    expect(service['formatHoursFromSeconds'](1800)).toBe('0.5h');
+    expect(formatHoursFromSeconds(1800)).toBe('0.5h');
+    expect(formatHoursFromSeconds(4800)).toBe('1.33h');
   });
 });
