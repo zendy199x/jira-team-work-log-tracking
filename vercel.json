@@ -10,11 +10,5 @@
             "runtime": "@vercel/node@5.3.24",
             "maxDuration": 60
         }
-    },
-    "crons": [
-        {
-            "path": "/api/cron",
-            "schedule": "40 9 * * 1-5"
-        }
-    ]
+    }
 }
