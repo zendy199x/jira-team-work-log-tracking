@@ -9,7 +9,7 @@ If this project helps your team, consider giving it a star.
 ## Why This Project
 
 - Track Jira work logs by team and report date with timezone-aware aggregation.
-- Trigger reports manually or on schedule via Vercel cron.
+- Trigger reports manually or on schedule via GitHub Actions cron.
 - Deliver report cards to Google Chat in webhook mode or app mode.
 - Keep architecture modular and easy to extend.
 
@@ -32,7 +32,7 @@ If this project helps your team, consider giving it a star.
 - TypeScript
 - Axios
 - Jest (strict coverage)
-- Vercel Serverless Functions + Vercel Cron
+- Vercel Serverless Functions + GitHub Actions
 
 ## Project Structure
 
@@ -277,12 +277,17 @@ pnpm dlx vercel link
 pnpm dlx vercel --prod --yes
 ```
 
-Cron schedule is configured in vercel.json:
+Cron is triggered by GitHub Actions (not Vercel Cron):
 
-- path: /api/cron
-- schedule: `40 9 * * 1-5`
+- workflow: `.github/workflows/report-cron.yml`
+- schedule: `0 10 * * 1-5` (UTC), equivalent to 17:00 Monday-Friday in Vietnam time
 
-Main branch is configured for automatic deployment. Any change to `vercel.json` on `main` will be applied after the next production deployment.
+Required GitHub Actions secrets:
+
+- `REPORT_CRON_URL` (example: `https://your-domain.com/api/cron`)
+- `CRON_SECRET` (must match production `CRON_SECRET` on Vercel)
+
+Main branch is configured for automatic deployment.
 
 ## CI and Quality
 
