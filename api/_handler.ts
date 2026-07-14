@@ -6,7 +6,8 @@ import type {
     ServerResponse,
 } from 'node:http';
 
-import express, { type Express } from 'express';
+import type { Request, Response } from 'express';
+import express from 'express';
 
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
@@ -26,7 +27,7 @@ type ResponseLike = {
 
 type NextLike = () => void;
 
-type ExpressHandler = Express;
+type ExpressHandler = (req: Request, res: Response) => unknown;
 
 let cachedHandler: ExpressHandler | null = null;
 
@@ -80,11 +81,14 @@ async function getHandler(): Promise<ExpressHandler> {
     );
 
     await app.init();
-    cachedHandler = expressApp;
-    return expressApp;
+    cachedHandler = expressApp as unknown as ExpressHandler;
+    return cachedHandler;
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse) {
+export default async function handler(
+    req: IncomingMessage | Request,
+    res: ServerResponse | Response,
+) {
     const appHandler = await getHandler();
-    return appHandler(req, res);
+    return appHandler(req as Request, res as Response);
 }
