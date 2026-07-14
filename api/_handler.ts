@@ -6,8 +6,7 @@ import type {
     ServerResponse,
 } from 'node:http';
 
-import type { Request, Response } from 'express';
-import express from 'express';
+import express, { type Request, type Response } from 'express';
 
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
