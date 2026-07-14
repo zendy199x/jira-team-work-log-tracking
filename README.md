@@ -1,12 +1,32 @@
 # Jira Team Work Log Tracking API
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Node 22.x](https://img.shields.io/badge/Node-22.x-339933?logo=node.js&logoColor=white)](package.json) [![pnpm 11](https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white)](package.json) [![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Node >=22](https://img.shields.io/badge/Node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json) [![pnpm 11](https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white)](package.json) [![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
 
 Open-source NestJS API for Jira team work log tracking, automated report generation, and Google Chat delivery.
 
 Vietnamese version: [README.vi.md](README.vi.md)
 
 If this project helps your team, consider giving it a star.
+
+## Table of Contents
+
+- [Why This Project](#why-this-project)
+- [Features](#features)
+- [Architecture Overview](#architecture-overview)
+- [Project Structure](#project-structure)
+- [Requirements](#requirements)
+- [Quick Start](#quick-start)
+- [Environment Variables](#environment-variables)
+- [Default Jira Query](#default-jira-query)
+- [API Endpoints](#api-endpoints)
+- [Runbook: Local and Production Flows](#runbook-local-and-production-flows)
+- [Scripts](#scripts)
+- [Deploying to Vercel](#deploying-to-vercel)
+- [CI and Quality](#ci-and-quality)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [Community](#community)
+- [License](#license)
 
 ## Why This Project
 
@@ -27,6 +47,23 @@ If this project helps your team, consider giving it a star.
   - Retry flow.
   - Chat event callback.
 - Health and help pages with environment-aware links.
+
+## Architecture Overview
+
+The report flow follows a layered architecture under `src/report`:
+
+- application: use-case orchestration, report execution pipeline
+- domain: contracts, types, value objects, pure aggregation logic
+- infrastructure: Jira API integration, Google Chat delivery, runtime config/env parsing
+
+High-level flow:
+
+1. A trigger arrives from manual endpoint, cron endpoint, or chat callback.
+2. The runner resolves configuration (timezone, team, query, auth checks).
+3. Jira issues/worklogs are fetched with pagination.
+4. Domain aggregation builds team summary and author-level details.
+5. Message payload is sent to Google Chat (webhook mode or app mode).
+6. Status/result is returned for API or scheduling logs.
 
 ## Tech Stack
 
@@ -63,7 +100,7 @@ tests/
 
 ## Requirements
 
-- Node.js: 22.x
+- Node.js: >=22 and <27
 - pnpm: 11.x
 
 ## Quick Start
@@ -130,6 +167,12 @@ If GOOGLE_CHAT_MODE=app:
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
 
+Behavior notes:
+
+- REPORT_TIMEZONE has higher priority than TZ.
+- REPORT_DATE is useful for deterministic backfill/debug runs.
+- CRON_SECRET should be non-empty in production.
+
 ### Default Jira Query
 
 By default, the service uses this JQL template:
@@ -180,6 +223,34 @@ Dedicated cron endpoint:
 | Method | Route     | Purpose                |
 | ------ | --------- | ---------------------- |
 | GET    | /api/cron | Scheduled cron trigger |
+
+## Runbook: Local and Production Flows
+
+### Local manual run flow
+
+1. Start server with env loaded.
+2. Call POST /reports/run with token.
+3. Verify logs for Jira fetch, aggregation, and chat send result.
+
+### Retry flow
+
+1. Open GET /reports/retry with token for confirmation page.
+2. Submit retry to re-run delivery pipeline.
+
+### Production scheduled flow
+
+1. Scheduler calls /api/cron.
+2. /api/cron forwards into the Nest report runner.
+3. Runner validates secret and executes the same domain pipeline.
+
+### Scheduler strategy recommendation
+
+Use one scheduler as primary to avoid duplicate reports:
+
+- Option A: Vercel Cron only.
+- Option B: GitHub Actions only.
+
+If you keep both enabled, make sure they are intentionally coordinated.
 
 ## Local Testing Commands
 
@@ -312,6 +383,14 @@ Required GitHub Actions secrets:
 - `CRON_SECRET` (must match production `CRON_SECRET` on Vercel)
 
 Main branch is configured for automatic deployment.
+
+Recommended production checklist:
+
+1. Confirm all required env vars are set in Vercel Production.
+2. Ensure CRON_SECRET is long, random, and matches scheduler secret.
+3. Verify REPORT_CRON_URL points to the production domain.
+4. Trigger one manual smoke test after deployment.
+5. Check logs for Jira auth, query result size, and Chat delivery status.
 
 ## CI and Quality
 

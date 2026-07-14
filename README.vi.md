@@ -1,12 +1,32 @@
 # Jira Team Work Log Tracking API (Tiếng Việt)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Node 22.x](https://img.shields.io/badge/Node-22.x-339933?logo=node.js&logoColor=white)](package.json) [![pnpm 11](https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white)](package.json) [![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Node >=22](https://img.shields.io/badge/Node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json) [![pnpm 11](https://img.shields.io/badge/pnpm-11-F69220?logo=pnpm&logoColor=white)](package.json) [![NestJS](https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&logoColor=white)](https://nestjs.com/)
 
 NestJS API mã nguồn mở để theo dõi work log Jira theo team, tự động tạo báo cáo và gửi Google Chat.
 
 Bản tiếng Anh (mặc định): [README.md](README.md)
 
 Nếu dự án này giúp ích cho team của bạn, hãy cho repository một sao.
+
+## Mục Lục
+
+- [Vì Sao Dự Án Này Tồn Tại](#vì-sao-dự-án-này-tồn-tại)
+- [Tính Năng](#tính-năng)
+- [Tổng Quan Kiến Trúc](#tổng-quan-kiến-trúc)
+- [Cấu Trúc Dự Án](#cấu-trúc-dự-án)
+- [Yêu Cầu](#yêu-cầu)
+- [Bắt Đầu Nhanh](#bắt-đầu-nhanh)
+- [Biến Môi Trường](#biến-môi-trường)
+- [Câu JQL Mặc Định](#câu-jql-mặc-định)
+- [API Endpoints](#api-endpoints)
+- [Runbook: Luồng Local và Production](#runbook-luồng-local-và-production)
+- [Scripts](#scripts)
+- [Deploy Lên Vercel](#deploy-lên-vercel)
+- [CI Và Chất Lượng](#ci-và-chất-lượng)
+- [Khắc Phục Sự Cố](#khắc-phục-sự-cố)
+- [Bảo Mật](#bảo-mật)
+- [Cộng Đồng](#cộng-đồng)
+- [Giấy Phép](#giấy-phép)
 
 ## Vì Sao Dự Án Này Tồn Tại
 
@@ -27,6 +47,23 @@ Nếu dự án này giúp ích cho team của bạn, hãy cho repository một s
   - Retry flow.
   - Chat event callback.
 - Trang health/help có liên kết theo môi trường.
+
+## Tổng Quan Kiến Trúc
+
+Luồng report đi theo layered architecture trong `src/report`:
+
+- application: orchestration use-case, điều phối pipeline report
+- domain: contracts, types, value objects, logic tổng hợp thuần nghiệp vụ
+- infrastructure: tích hợp Jira API, gửi Google Chat, xử lý runtime config/env
+
+Luồng chạy tổng quát:
+
+1. Trigger đến từ manual endpoint, cron endpoint hoặc chat callback.
+2. Runner đọc config (timezone, team, query, auth check).
+3. Jira issues/worklogs được lấy theo cơ chế phân trang.
+4. Domain aggregation tạo summary theo team và theo từng author.
+5. Payload được gửi lên Google Chat (webhook mode hoặc app mode).
+6. API/scheduler nhận kết quả để log và theo dõi.
 
 ## Công Nghệ
 
@@ -63,7 +100,7 @@ tests/
 
 ## Yêu Cầu
 
-- Node.js: 22.x
+- Node.js: >=22 và <27
 - pnpm: 11.x
 
 ## Bắt Đầu Nhanh
@@ -130,6 +167,12 @@ Nếu GOOGLE_CHAT_MODE=app:
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
 
+Ghi chú hành vi:
+
+- REPORT_TIMEZONE có độ ưu tiên cao hơn TZ.
+- REPORT_DATE hữu ích khi cần chạy lại theo ngày cố định để debug/backfill.
+- CRON_SECRET nên luôn có giá trị ở môi trường production.
+
 ### Câu JQL Mặc Định
 
 Mặc định hệ thống dùng JQL template sau:
@@ -180,6 +223,34 @@ Dedicated cron endpoint:
 | Method | Route     | Mục đích               |
 | ------ | --------- | ---------------------- |
 | GET    | /api/cron | Trigger cron theo lịch |
+
+## Runbook: Luồng Local Và Production
+
+### Luồng chạy thủ công ở local
+
+1. Khởi động server với env đã cấu hình.
+2. Gọi POST /reports/run kèm token.
+3. Kiểm tra log Jira fetch, aggregation và kết quả gửi chat.
+
+### Luồng retry
+
+1. Mở GET /reports/retry kèm token để hiển thị trang xác nhận.
+2. Submit retry để chạy lại pipeline gửi báo cáo.
+
+### Luồng chạy theo lịch ở production
+
+1. Scheduler gọi /api/cron.
+2. /api/cron forward vào Nest report runner.
+3. Runner xác thực secret và chạy cùng domain pipeline.
+
+### Khuyến nghị chiến lược scheduler
+
+Nên chọn một scheduler chính để tránh gửi báo cáo trùng:
+
+- Option A: chỉ dùng Vercel Cron.
+- Option B: chỉ dùng GitHub Actions.
+
+Nếu bật cả hai, cần phối hợp chủ động để không tạo duplicate report.
 
 ## Lệnh Test Local
 
@@ -312,6 +383,14 @@ GitHub Actions secrets cần có:
 - `CRON_SECRET` (phải trùng với `CRON_SECRET` trên Vercel Production)
 
 Nhánh main đang bật auto deployment.
+
+Checklist khuyến nghị cho production:
+
+1. Xác nhận đầy đủ biến env bắt buộc trên Vercel Production.
+2. Đảm bảo CRON_SECRET dài, ngẫu nhiên và khớp với secret scheduler.
+3. Kiểm tra REPORT_CRON_URL trỏ đúng domain production.
+4. Chạy một lượt smoke test thủ công sau khi deploy.
+5. Kiểm tra log cho Jira auth, số lượng issue/query và trạng thái gửi Chat.
 
 ## CI Và Chất Lượng
 
