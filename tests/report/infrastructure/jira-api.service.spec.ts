@@ -155,4 +155,36 @@ describe('JiraApiService', () => {
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[truncated]'));
   });
+
+  it('fetches active sprint from board', async () => {
+    mockedAxios.get.mockResolvedValue({
+      data: {
+        values: [
+          {
+            name: 'Sprint 10',
+            startDate: '2026-11-15T00:00:00.000+07:00',
+            endDate: '2026-11-21T23:59:59.000+07:00',
+          },
+        ],
+      },
+    });
+
+    const service = new JiraApiService();
+    const sprint = await service.fetchActiveSprint(jira, 8463);
+
+    expect(sprint).toEqual({
+      name: 'Sprint 10',
+      startDate: '2026-11-15T00:00:00.000+07:00',
+      endDate: '2026-11-21T23:59:59.000+07:00',
+    });
+  });
+
+  it('returns null when active sprint does not exist', async () => {
+    mockedAxios.get.mockResolvedValue({ data: { values: [] } });
+
+    const service = new JiraApiService();
+    const sprint = await service.fetchActiveSprint(jira, 8463);
+
+    expect(sprint).toBeNull();
+  });
 });

@@ -46,6 +46,7 @@ export class ReportConfigService implements ReportConfigPort {
     const jiraCheckUrl = this.resolveJiraCheckUrl(jiraDomain, teamName);
     const jiraQuery = this.buildJiraQuery(teamName);
     const reportTitle = this.buildReportTitle(teamName);
+    const jiraBoardId = this.resolveJiraBoardId();
     const timezone = this.resolveTimeZone();
     const requestedReportDate = (process.env.REPORT_DATE || '').trim();
     const reportDate = requestedReportDate
@@ -57,6 +58,7 @@ export class ReportConfigService implements ReportConfigPort {
       reportDate: reportDate.value,
       reportDateTimeLabel: this.formatDisplayDateTimeInTimeZone(new Date(), timezone.value),
       reportTitle,
+      ...(jiraBoardId ? { jiraBoardId } : {}),
       jiraQuery,
       aggregationDebug: this.getAggregationDebugConfig(),
       jiraCheckUrl,
@@ -208,6 +210,20 @@ export class ReportConfigService implements ReportConfigPort {
     }).join(', ');
 
     return `project = ${teamName.value} AND type IN (${issueTypes}) AND worklogDate >= startOfDay(-2d)`;
+  }
+
+  private resolveJiraBoardId(): number | undefined {
+    const rawBoardId = (process.env.JIRA_BOARD_ID || '').trim();
+    if (!rawBoardId) {
+      return undefined;
+    }
+
+    const boardId = Number(rawBoardId);
+    if (!Number.isInteger(boardId) || boardId <= 0) {
+      throw new Error('Invalid JIRA_BOARD_ID. It must be a positive integer.');
+    }
+
+    return boardId;
   }
 
   private getAggregationDebugConfig(): AggregationDebugConfig {

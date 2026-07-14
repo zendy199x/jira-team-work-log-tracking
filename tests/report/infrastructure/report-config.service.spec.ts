@@ -16,6 +16,7 @@ describe('ReportConfigService', () => {
     delete process.env.VERCEL_URL;
     delete process.env.API_BASE_PATH;
     delete process.env.CRON_SECRET;
+    delete process.env.JIRA_BOARD_ID;
   });
 
   afterAll(() => {
@@ -276,6 +277,26 @@ describe('ReportConfigService', () => {
       throw new Error('Expected webhook chat mode');
     }
     expect(config.chat.reportUrl).toContain('/api/reports/retry');
+  });
+
+  it('includes jiraBoardId when JIRA_BOARD_ID is set', () => {
+    setBaseEnv();
+    process.env.JIRA_BOARD_ID = '8463';
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    expect(config.jiraBoardId).toBe(8463);
+  });
+
+  it('throws when JIRA_BOARD_ID is invalid', () => {
+    setBaseEnv();
+    process.env.JIRA_BOARD_ID = 'abc';
+
+    const service = new ReportConfigService();
+    expect(() => service.getRuntimeConfig()).toThrow(
+      'Invalid JIRA_BOARD_ID. It must be a positive integer.',
+    );
   });
 
   it('uses default /api base path on vercel when API_BASE_PATH is empty', () => {

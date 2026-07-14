@@ -1,10 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import type { JiraGatewayPort } from '../domain/report.ports';
-import type { Issue, JiraConfig, SearchResponse, WorklogItem, WorklogResponse } from '../domain/report.types';
+import type {
+  Issue,
+  JiraConfig,
+  SearchResponse,
+  SprintSnapshot,
+  WorklogItem,
+  WorklogResponse,
+} from '../domain/report.types';
 
 const JIRA_SEARCH_PATH = '/rest/api/3/search/jql';
 const JIRA_ISSUE_WORKLOG_PATH = '/rest/api/3/issue';
+const JIRA_BOARD_SPRINT_PATH = '/rest/agile/1.0/board';
 const SEARCH_FIELDS = ['worklog'];
 const SEARCH_EXPAND = 'worklog';
 const PAGE_SIZE = 100;
@@ -13,6 +21,44 @@ const WORKLOG_PAGE_SIZE = 100;
 @Injectable()
 export class JiraApiService implements JiraGatewayPort {
   private readonly logger = new Logger(JiraApiService.name);
+
+  async fetchActiveSprint(jira: JiraConfig, boardId: number): Promise<SprintSnapshot | null> {
+    const response = await axios.get<{
+      values?: Array<{
+        name?: string;
+        startDate?: string;
+        endDate?: string;
+      }>;
+    }>(
+      `${jira.jiraDomain}${JIRA_BOARD_SPRINT_PATH}/${boardId}/sprint`,
+      {
+        auth: {
+          username: jira.jiraEmail,
+          password: jira.jiraApiToken,
+        },
+        headers: {
+          Accept: 'application/json',
+        },
+        params: {
+          state: 'active',
+          maxResults: 1,
+        },
+      },
+    );
+
+    const sprint = response.data?.values?.[0];
+    const sprintName = String(sprint?.name || '').trim();
+
+    if (!sprintName) {
+      return null;
+    }
+
+    return {
+      name: sprintName,
+      startDate: sprint?.startDate,
+      endDate: sprint?.endDate,
+    };
+  }
 
   async fetchIssuesWithWorkLogs(
     jira: JiraConfig,

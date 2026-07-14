@@ -32,7 +32,10 @@ describe('ReportRunnerService', () => {
       isRetryAction: jest.fn((fn) => fn === 'retry_report'),
     };
 
-    jiraGateway = { fetchIssuesWithWorkLogs: jest.fn().mockResolvedValue([]) };
+    jiraGateway = {
+      fetchIssuesWithWorkLogs: jest.fn().mockResolvedValue([]),
+      fetchActiveSprint: jest.fn().mockResolvedValue(null),
+    };
     aggregationService = {
       aggregateByReportDate: jest.fn().mockReturnValue({ users: { Alice: { logs: { '2026-05-09': 3600 } } }, reportDate: '2026-05-09' }),
     };
@@ -54,6 +57,83 @@ describe('ReportRunnerService', () => {
       totalHours: '1h',
       userCount: 1,
     });
+  });
+
+  it('adds sprint summary line when active sprint has name and dates', async () => {
+    configService.getRuntimeConfig.mockReturnValue({
+      timezone: 'UTC',
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
+      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      jiraBoardId: 8463,
+      jiraQuery: 'project = BKM4',
+      aggregationDebug: { enabled: false, authorFilters: [] },
+      jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
+      jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
+      chat: { mode: 'webhook', webhook: 'https://chat.example.com' },
+    });
+
+    jiraGateway.fetchActiveSprint.mockResolvedValue({
+      name: 'Sprint 10',
+      startDate: '2026-11-15T00:00:00.000+07:00',
+      endDate: '2026-11-21T23:59:59.000+07:00',
+    });
+
+    await service.runDailyReport('manual');
+
+    const sentPayload = chatGateway.sendReport.mock.calls[0][1];
+    expect(sentPayload.sprintSummaryLine).toBe('Sprint 10 | Nov 15th, 2026 to Nov 21st, 2026');
+  });
+
+  it('formats ordinal suffixes for sprint dates', async () => {
+    configService.getRuntimeConfig.mockReturnValue({
+      timezone: 'UTC',
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
+      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      jiraBoardId: 8463,
+      jiraQuery: 'project = BKM4',
+      aggregationDebug: { enabled: false, authorFilters: [] },
+      jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
+      jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
+      chat: { mode: 'webhook', webhook: 'https://chat.example.com' },
+    });
+
+    jiraGateway.fetchActiveSprint.mockResolvedValue({
+      name: 'Sprint 11',
+      startDate: '2026-11-11T00:00:00.000+07:00',
+      endDate: '2026-11-14T23:59:59.000+07:00',
+    });
+
+    await service.runDailyReport('manual');
+
+    const sentPayload = chatGateway.sendReport.mock.calls[0][1];
+    expect(sentPayload.sprintSummaryLine).toBe('Sprint 11 | Nov 11th, 2026 to Nov 14th, 2026');
+  });
+
+  it('does not include sprint summary line when sprint data is incomplete', async () => {
+    configService.getRuntimeConfig.mockReturnValue({
+      timezone: 'UTC',
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
+      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      jiraBoardId: 8463,
+      jiraQuery: 'project = BKM4',
+      aggregationDebug: { enabled: false, authorFilters: [] },
+      jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
+      jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
+      chat: { mode: 'webhook', webhook: 'https://chat.example.com' },
+    });
+
+    jiraGateway.fetchActiveSprint.mockResolvedValue({
+      name: 'Sprint 10',
+      startDate: '2026-11-15T00:00:00.000+07:00',
+    });
+
+    await service.runDailyReport('manual');
+
+    const sentPayload = chatGateway.sendReport.mock.calls[0][1];
+    expect(sentPayload.sprintSummaryLine).toBeUndefined();
   });
 
   it('handles users without logs for report date', async () => {
