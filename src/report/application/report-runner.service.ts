@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ReportAggregationService } from '../domain/report-aggregation.service';
 import {
-    CHAT_GATEWAY_PORT,
-    JIRA_GATEWAY_PORT,
-    REPORT_CONFIG_PORT,
-    type ChatGatewayPort,
-    type JiraGatewayPort,
-    type ReportConfigPort,
+  CHAT_GATEWAY_PORT,
+  JIRA_GATEWAY_PORT,
+  REPORT_CONFIG_PORT,
+  type ChatGatewayPort,
+  type JiraGatewayPort,
+  type ReportConfigPort,
 } from '../domain/report.ports';
 import type { GoogleChatEvent } from '../domain/report.types';
 import { formatHoursFromSeconds, normalizeAuthorName } from '../domain/report.utils';
@@ -30,6 +30,7 @@ export class ReportRunnerService {
     const cfg = this.configService.getRuntimeConfig();
     const reportDate = ReportDate.from(cfg.reportDate);
     const timezone = Timezone.from(cfg.timezone);
+    const sprintSummaryLine = await this.resolveSprintSummaryLine(cfg);
     const issues = await this.jiraGateway.fetchIssuesWithWorkLogs(
       cfg.jira,
       cfg.jiraQuery,
@@ -51,6 +52,7 @@ export class ReportRunnerService {
         ...data,
         reportDateTimeLabel: cfg.reportDateTimeLabel,
         reportTitle: cfg.reportTitle,
+        ...(sprintSummaryLine ? { sprintSummaryLine } : {}),
       },
       cfg.jiraCheckUrl,
     );
@@ -154,5 +156,77 @@ export class ReportRunnerService {
     }
 
     return filters.includes(normalizeAuthorName(author).toLowerCase());
+  }
+
+  private async resolveSprintSummaryLine(cfg: {
+    jiraBoardId?: number;
+    jira: { jiraDomain: string; jiraEmail: string; jiraApiToken: string };
+  }): Promise<string | undefined> {
+    if (!cfg.jiraBoardId) {
+      return undefined;
+    }
+
+    try {
+      const sprint = await this.jiraGateway.fetchActiveSprint(cfg.jira, cfg.jiraBoardId);
+      if (!sprint?.name || !sprint.startDate || !sprint.endDate) {
+        return undefined;
+      }
+
+      const start = this.formatSprintDateForDisplay(sprint.startDate);
+      const end = this.formatSprintDateForDisplay(sprint.endDate);
+      if (!start || !end) {
+        return undefined;
+      }
+
+      return `${sprint.name} | ${start} to ${end}`;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.warn(`Skip sprint summary because sprint fetch failed: ${message}`);
+      return undefined;
+    }
+  }
+
+  private formatSprintDateForDisplay(rawDate: string): string | undefined {
+    const normalized = String(rawDate || '').trim();
+    const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) {
+      return undefined;
+    }
+
+    const [, year, month, day] = match;
+    const monthNumber = Number(month);
+    const dayNumber = Number(day);
+    if (!Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+      return undefined;
+    }
+    if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 31) {
+      return undefined;
+    }
+
+    const monthText = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ][monthNumber - 1];
+    const suffix = this.getOrdinalSuffix(dayNumber);
+
+    return `${monthText} ${dayNumber}${suffix}, ${year}`;
+  }
+
+  private getOrdinalSuffix(day: number): string {
+    const lastTwoDigits = day % 100;
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+      return 'th';
+    }
+
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
   }
 }

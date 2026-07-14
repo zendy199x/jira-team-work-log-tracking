@@ -164,6 +164,7 @@ Nếu GOOGLE_CHAT_MODE=app:
 - TZ
 - REPORT_DATE
 - JIRA_JQL_OVERRIDE
+- JIRA_BOARD_ID
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
 
@@ -172,6 +173,13 @@ Ghi chú hành vi:
 - REPORT_TIMEZONE có độ ưu tiên cao hơn TZ.
 - REPORT_DATE hữu ích khi cần chạy lại theo ngày cố định để debug/backfill.
 - CRON_SECRET nên luôn có giá trị ở môi trường production.
+- JIRA_BOARD_ID bật hiển thị dòng sprint trong header report (chỉ hiện khi Jira trả về active sprint có đủ tên, ngày bắt đầu và ngày kết thúc).
+
+Ví dụ dòng sprint:
+
+```text
+Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026
+```
 
 ### Câu JQL Mặc Định
 

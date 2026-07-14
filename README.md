@@ -164,6 +164,7 @@ If GOOGLE_CHAT_MODE=app:
 - TZ
 - REPORT_DATE
 - JIRA_JQL_OVERRIDE
+- JIRA_BOARD_ID
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
 
@@ -172,6 +173,13 @@ Behavior notes:
 - REPORT_TIMEZONE has higher priority than TZ.
 - REPORT_DATE is useful for deterministic backfill/debug runs.
 - CRON_SECRET should be non-empty in production.
+- JIRA_BOARD_ID enables sprint summary in report header (shown only when Jira returns active sprint with name, start date, and end date).
+
+Sprint summary line example:
+
+```text
+Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026
+```
 
 ### Default Jira Query
 

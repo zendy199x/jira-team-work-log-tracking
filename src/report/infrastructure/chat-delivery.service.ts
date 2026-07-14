@@ -5,10 +5,10 @@ import { Injectable } from '@nestjs/common';
 
 import type { ChatGatewayPort } from '../domain/report.ports';
 import {
-  type AggregatedData,
-  type AggregatedUser,
-  type ChatDeliveryConfig,
-  ChatMode,
+    type AggregatedData,
+    type AggregatedUser,
+    type ChatDeliveryConfig,
+    ChatMode,
 } from '../domain/report.types';
 import { formatHoursFromSeconds } from '../domain/report.utils';
 
@@ -18,7 +18,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
 
   async sendReport(
     chat: ChatDeliveryConfig,
-    data: AggregatedData & { reportDateTimeLabel: string; reportTitle: string },
+    data: AggregatedData & { reportDateTimeLabel: string; reportTitle: string; sprintSummaryLine?: string },
     jiraCheckUrl: string,
   ): Promise<void> {
     const text = this.buildChatTextReport(data);
@@ -62,6 +62,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
     reportDate: string;
     reportDateTimeLabel: string;
     reportTitle: string;
+    sprintSummaryLine?: string;
   }): string {
     const rows = Object.entries(data.users)
       .map(([name, user]) => {
@@ -79,6 +80,8 @@ export class ChatDeliveryService implements ChatGatewayPort {
       return [
         '```',
         data.reportTitle,
+        ...(data.sprintSummaryLine ? [data.sprintSummaryLine] : []),
+        ...(data.sprintSummaryLine ? [''] : []),
         `Date: ${data.reportDateTimeLabel}`,
         noDataBorder,
         noDataLine,
@@ -113,6 +116,8 @@ export class ChatDeliveryService implements ChatGatewayPort {
     return [
       '```',
       data.reportTitle,
+      ...(data.sprintSummaryLine ? [data.sprintSummaryLine] : []),
+      ...(data.sprintSummaryLine ? [''] : []),
       `Date: ${data.reportDateTimeLabel}`,
       border,
       header,

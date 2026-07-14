@@ -41,11 +41,18 @@ export interface JiraConfig {
   jiraApiToken: string;
 }
 
+export interface SprintSnapshot {
+  name: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface ReportRuntimeConfig {
   timezone: string;
   reportDate: string;
   reportDateTimeLabel: string;
   reportTitle: string;
+  jiraBoardId?: number;
   jiraQuery: string;
   aggregationDebug: AggregationDebugConfig;
   jiraCheckUrl: string;

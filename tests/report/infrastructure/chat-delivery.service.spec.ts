@@ -3,10 +3,10 @@ import { JWT } from 'google-auth-library';
 
 import { ChatMode } from '../../../src/report/domain/report.types';
 import {
-  formatHoursFromSeconds,
+    formatHoursFromSeconds,
 } from '../../../src/report/domain/report.utils';
 import {
-  ChatDeliveryService,
+    ChatDeliveryService,
 } from '../../../src/report/infrastructure/chat-delivery.service';
 
 const authorizeMock = jest.fn().mockResolvedValue({ access_token: 'mock-token' });
@@ -68,6 +68,28 @@ describe('ChatDeliveryService', () => {
 
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(JSON.stringify(payload)).toContain('No work log data at this time');
+  });
+
+  it('renders sprint summary line when provided', async () => {
+    postMock.mockImplementation(async () => ({}));
+    const service = new ChatDeliveryService();
+
+    await service.sendReport(
+      { mode: ChatMode.WEBHOOK, webhook: 'https://chat.example.com' },
+      {
+        users: { Alice: { logs: { '2026-05-09': 3600 } } },
+        reportDate: '2026-05-09',
+        reportDateTimeLabel: 'May 9',
+        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        sprintSummaryLine: 'Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026',
+      },
+      'https://jira/check',
+    );
+
+    const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
+    const text = String(payload.text || '');
+    expect(text).toContain('Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026');
+    expect(text).toContain('Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nDate: May 9');
   });
 
   it('sends app-mode message with bearer token', async () => {
