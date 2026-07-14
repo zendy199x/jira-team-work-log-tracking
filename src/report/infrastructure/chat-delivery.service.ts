@@ -1,12 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import { JWT } from 'google-auth-library';
+
+import { Injectable } from '@nestjs/common';
+
 import type { ChatGatewayPort } from '../domain/report.ports';
-import { ChatMode, type AggregatedData, type AggregatedUser, type ChatDeliveryConfig } from '../domain/report.types';
+import {
+  type AggregatedData,
+  type AggregatedUser,
+  type ChatDeliveryConfig,
+  ChatMode,
+} from '../domain/report.types';
+import { formatHoursFromSeconds } from '../domain/report.utils';
 
 @Injectable()
 export class ChatDeliveryService implements ChatGatewayPort {
-  private readonly logger = new Logger(ChatDeliveryService.name);
+  private static readonly MAX_REPORT_ROWS = 50;
 
   async sendReport(
     chat: ChatDeliveryConfig,
@@ -14,46 +22,39 @@ export class ChatDeliveryService implements ChatGatewayPort {
     jiraCheckUrl: string,
   ): Promise<void> {
     const text = this.buildChatTextReport(data);
-    await this.postToChat(chat, { text });
-
-    try {
-      const buttons = [
-        ...this.buildRetryButtons(chat),
-        {
-          text: 'Check in Jira',
-          onClick: {
-            openLink: {
-              url: jiraCheckUrl,
-            },
+    const buttons = [
+      ...this.buildRetryButtons(chat),
+      {
+        text: 'Check in Jira',
+        onClick: {
+          openLink: {
+            url: jiraCheckUrl,
           },
         },
-      ];
+      },
+    ];
 
-      await this.postToChat(chat, {
-        cardsV2: [
-          {
-            cardId: 'jira-check',
-            card: {
-              sections: [
-                {
-                  widgets: [
-                    {
-                      buttonList: {
-                        buttons,
-                      },
+    await this.postToChat(chat, {
+      text,
+      cardsV2: [
+        {
+          cardId: 'jira-check',
+          card: {
+            sections: [
+              {
+                widgets: [
+                  {
+                    buttonList: {
+                      buttons,
                     },
-                  ],
-                },
-              ],
-            },
+                  },
+                ],
+              },
+            ],
           },
-        ],
-      });
-    } catch (error) {
-      this.logger.warn(
-        `Failed to send Jira button card, text report already sent: ${(error as Error).message}`,
-      );
-    }
+        },
+      ],
+    });
   }
 
   private buildChatTextReport(data: {
@@ -87,7 +88,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
     }
 
     const grandTotalSeconds = rows.reduce((sumSeconds, row) => sumSeconds + row.totalSeconds, 0);
-    const cappedRows = rows.slice(0, 50);
+    const cappedRows = rows.slice(0, ChatDeliveryService.MAX_REPORT_ROWS);
     const nameWidth = Math.max(
       'Author'.length,
       ...cappedRows.map((row, index) => `${index + 1}. ${row.name}`.length),
@@ -95,50 +96,36 @@ export class ChatDeliveryService implements ChatGatewayPort {
     );
     const totalWidth = Math.max(
       'Total'.length,
-      ...cappedRows.map((row) => this.formatHoursFromSeconds(row.totalSeconds).length),
-      this.formatHoursFromSeconds(grandTotalSeconds).length,
+      ...cappedRows.map((row) => formatHoursFromSeconds(row.totalSeconds).length),
+      formatHoursFromSeconds(grandTotalSeconds).length,
     );
 
-    const horizontalBorder = `+${'-'.repeat(nameWidth + 2)}+${'-'.repeat(totalWidth + 2)}+`;
-    const totalBorder = `+${'-'.repeat(nameWidth + 2)}+${'-'.repeat(totalWidth + 2)}+`;
+    const border = `+${'-'.repeat(nameWidth + 2)}+${'-'.repeat(totalWidth + 2)}+`;
     const header = `| ${'Author'.padEnd(nameWidth)} | ${'Total'.padStart(totalWidth)} |`;
     const rowLines = cappedRows.map((row, index) => {
-      const hoursText = this.formatHoursFromSeconds(row.totalSeconds);
+      const hoursText = formatHoursFromSeconds(row.totalSeconds);
       const authorText = `${index + 1}. ${row.name}`;
       return `| ${authorText.padEnd(nameWidth)} | ${hoursText.padStart(totalWidth)} |`;
     });
-    const totalHoursText = this.formatHoursFromSeconds(grandTotalSeconds);
+    const totalHoursText = formatHoursFromSeconds(grandTotalSeconds);
     const totalLine = `| ${'Total'.padEnd(nameWidth)} | ${totalHoursText.padStart(totalWidth)} |`;
 
     return [
       '```',
       data.reportTitle,
       `Date: ${data.reportDateTimeLabel}`,
-      horizontalBorder,
+      border,
       header,
-      horizontalBorder,
+      border,
       ...rowLines,
-      totalBorder,
+      border,
       totalLine,
-      totalBorder,
+      border,
       '```',
     ].join('\n');
   }
 
   private buildRetryButtons(chat: ChatDeliveryConfig): Array<Record<string, unknown>> {
-    if (chat.mode === ChatMode.APP) {
-      return [
-        {
-          text: 'Retry',
-          onClick: {
-            action: {
-              function: 'retry_report',
-            },
-          },
-        },
-      ];
-    }
-
     if (chat.reportUrl) {
       return [
         {
@@ -146,6 +133,19 @@ export class ChatDeliveryService implements ChatGatewayPort {
           onClick: {
             openLink: {
               url: chat.reportUrl,
+            },
+          },
+        },
+      ];
+    }
+
+    if (chat.mode === ChatMode.APP) {
+      return [
+        {
+          text: 'Retry',
+          onClick: {
+            action: {
+              function: 'retry_report',
             },
           },
         },
@@ -176,25 +176,34 @@ export class ChatDeliveryService implements ChatGatewayPort {
     });
   }
 
+  private _cachedToken?: { value: string; expiresAt: number };
+
   private async getGoogleChatAccessToken(
     chat: Extract<ChatDeliveryConfig, { mode: ChatMode.APP }>,
   ): Promise<string> {
+    const now = Date.now();
+
+    if (this._cachedToken && this._cachedToken.expiresAt > now + 60_000) {
+      return this._cachedToken.value;
+    }
+
     const client = new JWT({
       email: chat.serviceAccountEmail,
       key: chat.serviceAccountPrivateKey,
       scopes: ['https://www.googleapis.com/auth/chat.bot'],
     });
 
-    const { access_token: accessToken } = await client.authorize();
+    const { access_token: accessToken, expiry_date: expiryDate } = await client.authorize();
     if (!accessToken) {
       throw new Error('Failed to obtain Google Chat access token');
     }
 
+    this._cachedToken = {
+      value: accessToken,
+      expiresAt: expiryDate ?? now + 3_600_000,
+    };
+
     return accessToken;
   }
 
-  private formatHoursFromSeconds(totalSeconds: number): string {
-    const hours = totalSeconds / 3600;
-    return `${String(hours)}h`;
-  }
 }

@@ -1,4 +1,3 @@
-import type { AxiosRequestConfig } from 'axios';
 
 export interface IssueFields {
   summary?: string;
@@ -40,7 +39,6 @@ export interface JiraConfig {
   jiraDomain: string;
   jiraEmail: string;
   jiraApiToken: string;
-  requestConfig: AxiosRequestConfig;
 }
 
 export interface ReportRuntimeConfig {
@@ -76,23 +74,8 @@ export type ChatDeliveryConfig =
       space: string;
       serviceAccountEmail: string;
       serviceAccountPrivateKey: string;
+      reportUrl?: string;
     };
-
-export interface AggregatedIssue {
-  key: string;
-  summary: string;
-  minutes: number;
-}
-
-export interface AggregatedAuthorReport {
-  total: number;
-  issues: Record<string, AggregatedIssue>;
-}
-
-export interface AggregatedDailyReport {
-  date: string;
-  byAuthor: Record<string, AggregatedAuthorReport>;
-}
 
 export interface AggregatedUser {
   logs: Record<string, number>;

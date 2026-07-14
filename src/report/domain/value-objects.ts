@@ -18,6 +18,18 @@ export class TeamName {
 export class Timezone {
   private constructor(public readonly value: string) {}
 
+  private _formatter?: Intl.DateTimeFormat;
+
+  private get formatter(): Intl.DateTimeFormat {
+    this._formatter ??= new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.value,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    return this._formatter;
+  }
+
   static from(rawValue: string): Timezone {
     const value = rawValue.trim();
     if (!value) {
@@ -33,14 +45,7 @@ export class Timezone {
   }
 
   formatDate(date: Date): string {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: this.value,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-
-    const parts = formatter.formatToParts(date);
+    const parts = this.formatter.formatToParts(date);
     const year = parts.find((part) => part.type === 'year')?.value;
     const month = parts.find((part) => part.type === 'month')?.value;
     const day = parts.find((part) => part.type === 'day')?.value;
@@ -48,6 +53,7 @@ export class Timezone {
     return `${year}-${month}-${day}`;
   }
 }
+
 
 export class ReportDate {
   private constructor(public readonly value: string) {}

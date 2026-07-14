@@ -1,12 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+
 import type { ReportConfigPort } from '../domain/report.ports';
 import {
-    ChatMode,
-    type AggregationDebugConfig,
-    type ChatDeliveryConfig,
-    type ReportRuntimeConfig,
+  type AggregationDebugConfig,
+  type ChatDeliveryConfig,
+  ChatMode,
+  type ReportRuntimeConfig,
 } from '../domain/report.types';
-import { ReportDate, TeamName, Timezone } from '../domain/value-objects';
+import { normalizeAuthorName } from '../domain/report.utils';
+import {
+  ReportDate,
+  TeamName,
+  Timezone,
+} from '../domain/value-objects';
 
 @Injectable()
 export class ReportConfigService implements ReportConfigPort {
@@ -27,6 +36,7 @@ export class ReportConfigService implements ReportConfigPort {
     'Sub Refinement',
     'Sub-overhead',
     'Sub Test Execution',
+    'Sub Automation',
   ];
 
   getRuntimeConfig(): ReportRuntimeConfig {
@@ -54,15 +64,6 @@ export class ReportConfigService implements ReportConfigPort {
         jiraDomain,
         jiraEmail: this.requireEnv('JIRA_EMAIL'),
         jiraApiToken: this.requireEnv('JIRA_API_TOKEN'),
-        requestConfig: {
-          auth: {
-            username: this.requireEnv('JIRA_EMAIL'),
-            password: this.requireEnv('JIRA_API_TOKEN'),
-          },
-          headers: {
-            Accept: 'application/json',
-          },
-        },
       },
       chat: this.getChatDeliveryConfig(),
     };
@@ -83,6 +84,7 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private getChatDeliveryConfig(): ChatDeliveryConfig {
+    const reportUrl = this.buildRetryReportUrl();
     const mode = this.resolveChatMode();
 
     if (mode === ChatMode.APP) {
@@ -94,10 +96,9 @@ export class ReportConfigService implements ReportConfigPort {
           String.raw`\n`,
           '\n',
         ),
+        ...(reportUrl ? { reportUrl } : {}),
       };
     }
-
-    const reportUrl = this.buildRetryReportUrl();
 
     return {
       mode: ChatMode.WEBHOOK,
@@ -194,6 +195,11 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private buildJiraQuery(teamName: TeamName): string {
+    const configuredJql = (process.env.JIRA_JQL_OVERRIDE || '').trim();
+    if (configuredJql) {
+      return configuredJql.replaceAll('{TEAM_NAME}', teamName.value);
+    }
+
     const issueTypes = ReportConfigService.JIRA_WORK_LOG_ISSUE_TYPES.map((issueType) => {
       if (issueType.includes(' ')) {
         return `"${issueType}"`;
@@ -209,21 +215,15 @@ export class ReportConfigService implements ReportConfigPort {
     const rawFilters = (process.env.REPORT_DEBUG_AUTHORS || '').trim();
     const authorFilters = rawFilters
       ? rawFilters
-          .split(',')
-          .map((item) => this.normalizeAuthorName(item).toLowerCase())
-          .filter(Boolean)
+        .split(',')
+        .map((item) => normalizeAuthorName(item).toLowerCase())
+        .filter(Boolean)
       : [];
 
     return {
       enabled,
       authorFilters,
     };
-  }
-
-  private normalizeAuthorName(rawName: string): string {
-    const name = rawName.trim();
-    const shortName = name.split('(')[0]?.trim();
-    return shortName || name;
   }
 
   private isTruthyValue(value: string): boolean {
@@ -266,6 +266,11 @@ export class ReportConfigService implements ReportConfigPort {
       return null;
     }
 
+    if (this.isLocalhostHost(baseUrl.hostname) && baseUrl.protocol === 'https:') {
+      baseUrl.protocol = 'http:';
+      this.logger.warn('APP_BASE_URL uses https on localhost. Falling back to http for retry URL.');
+    }
+
     const configuredApiBasePath = (process.env.API_BASE_PATH || '').trim();
     const defaultApiBasePath = process.env.VERCEL ? '/api' : '';
     const rawApiBasePath = configuredApiBasePath || defaultApiBasePath;
@@ -297,5 +302,15 @@ export class ReportConfigService implements ReportConfigPort {
 
     const port = (process.env.PORT || '').trim() || '3000';
     return `http://localhost:${port}`;
+  }
+
+  private isLocalhostHost(hostname: string): boolean {
+    const normalized = hostname.trim().toLowerCase();
+    return (
+      normalized === 'localhost' ||
+      normalized === '127.0.0.1' ||
+      normalized === '::1' ||
+      normalized.endsWith('.localhost')
+    );
   }
 }

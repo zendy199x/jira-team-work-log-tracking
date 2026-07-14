@@ -4,12 +4,14 @@
 
 Open-source NestJS API for Jira team work log tracking, automated report generation, and Google Chat delivery.
 
+Vietnamese version: [README.vi.md](README.vi.md)
+
 If this project helps your team, consider giving it a star.
 
 ## Why This Project
 
 - Track Jira work logs by team and report date with timezone-aware aggregation.
-- Trigger reports manually or on schedule via Vercel cron.
+- Trigger reports manually or on schedule via GitHub Actions cron.
 - Deliver report cards to Google Chat in webhook mode or app mode.
 - Keep architecture modular and easy to extend.
 
@@ -32,7 +34,7 @@ If this project helps your team, consider giving it a star.
 - TypeScript
 - Axios
 - Jest (strict coverage)
-- Vercel Serverless Functions + Vercel Cron
+- Vercel Serverless Functions + GitHub Actions
 
 ## Project Structure
 
@@ -124,8 +126,27 @@ If GOOGLE_CHAT_MODE=app:
 - REPORT_TIMEZONE
 - TZ
 - REPORT_DATE
+- JIRA_JQL_OVERRIDE
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
+
+### Default Jira Query
+
+By default, the service uses this JQL template:
+
+```text
+project = {TEAM_NAME} AND type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") AND worklogDate >= startOfDay(-2d)
+```
+
+`{TEAM_NAME}` is resolved from `TEAM_NAME` at runtime.
+
+To override this query directly via environment variable, set:
+
+```text
+JIRA_JQL_OVERRIDE=project = {TEAM_NAME} AND statusCategory != Done
+```
+
+`JIRA_JQL_OVERRIDE` takes precedence over the default query.
 
 ## API Endpoints
 
@@ -174,10 +195,16 @@ Manual run:
 curl -X POST "http://localhost:3000/reports/run?token=YOUR_CRON_SECRET"
 ```
 
-Retry run:
+Open retry confirmation page:
 
 ```bash
 curl "http://localhost:3000/reports/retry?token=YOUR_CRON_SECRET"
+```
+
+Trigger retry directly:
+
+```bash
+curl -X POST "http://localhost:3000/reports/retry?token=YOUR_CRON_SECRET"
 ```
 
 ## Scripts
@@ -271,12 +298,20 @@ pnpm dlx vercel link
 pnpm dlx vercel --prod --yes
 ```
 
-Cron schedule is configured in vercel.json:
+Cron schedules:
 
-- path: /api/cron
-- schedule: `40 9 * * 1-5` (UTC), equivalent to 16:40 Monday-Friday in Vietnam time
+- Vercel Cron path: `/api/cron`
+- Vercel schedule: `30 9 * * 1-5` (UTC), equivalent to 16:30 Monday-Friday in Vietnam time
 
-Note: GitHub Actions in this repository is used for CI/CD validation and deployment only, not for scheduled cron triggering.
+- GitHub Actions workflow: `.github/workflows/report-cron.yml`
+- GitHub Actions schedule: `30 9 * * 1-5` (UTC), equivalent to 16:30 Monday-Friday in Vietnam time
+
+Required GitHub Actions secrets:
+
+- `REPORT_CRON_URL` (example: `https://your-domain.com/api/cron`)
+- `CRON_SECRET` (must match production `CRON_SECRET` on Vercel)
+
+Main branch is configured for automatic deployment.
 
 ## CI and Quality
 

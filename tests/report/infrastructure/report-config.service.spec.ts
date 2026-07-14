@@ -1,4 +1,7 @@
-import { ReportConfigService } from '../../../src/report/infrastructure/report-config.service';
+import { normalizeAuthorName } from '../../../src/report/domain/report.utils';
+import {
+    ReportConfigService,
+} from '../../../src/report/infrastructure/report-config.service';
 
 describe('ReportConfigService', () => {
   const originalEnv = process.env;
@@ -60,6 +63,25 @@ describe('ReportConfigService', () => {
       throw new Error('Expected app chat mode');
     }
     expect(config.chat.serviceAccountPrivateKey).toContain('\n');
+    expect((config.chat as { reportUrl?: string }).reportUrl).toContain('/reports/retry');
+  });
+
+  it('normalizes localhost https APP_BASE_URL to http for retry url', () => {
+    setBaseEnv();
+    process.env.APP_BASE_URL = 'https://localhost:3000';
+    process.env.CRON_SECRET = 'abc';
+
+    const service = new ReportConfigService();
+    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const config = service.getRuntimeConfig();
+
+    if (config.chat.mode !== 'webhook') {
+      throw new Error('Expected webhook chat mode');
+    }
+    expect(config.chat.reportUrl).toContain('http://localhost:3000/reports/retry');
+    expect(warnSpy).toHaveBeenCalledWith(
+      'APP_BASE_URL uses https on localhost. Falling back to http for retry URL.',
+    );
   });
 
   it('falls back on invalid chat mode and timezone', () => {
@@ -189,6 +211,27 @@ describe('ReportConfigService', () => {
     expect(config.aggregationDebug.authorFilters).toEqual(['alice', 'bob']);
   });
 
+  it('uses JIRA_JQL_OVERRIDE directly when provided', () => {
+    setBaseEnv();
+    process.env.JIRA_JQL_OVERRIDE = 'project = BKM4 AND statusCategory != Done';
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    expect(config.jiraQuery).toBe('project = BKM4 AND statusCategory != Done');
+  });
+
+  it('replaces TEAM_NAME placeholder in JIRA_JQL_OVERRIDE', () => {
+    setBaseEnv();
+    process.env.TEAM_NAME = 'BKM4';
+    process.env.JIRA_JQL_OVERRIDE = 'project = {TEAM_NAME} AND worklogDate >= startOfDay(-1d)';
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    expect(config.jiraQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-1d)');
+  });
+
   it('omits retry report token when CRON_SECRET is empty and warns', () => {
     setBaseEnv();
     process.env.CRON_SECRET = '';
@@ -270,8 +313,6 @@ describe('ReportConfigService', () => {
 
   it('falls back to full raw author name when short name is empty', () => {
     setBaseEnv();
-    const service = new ReportConfigService();
-
-    expect(service['normalizeAuthorName']('()')).toBe('()');
+    expect(normalizeAuthorName('()')).toBe('()');
   });
 });

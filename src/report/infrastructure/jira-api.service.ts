@@ -67,45 +67,48 @@ export class JiraApiService implements JiraGatewayPort {
     issues: Issue[],
     debugEnabled: boolean,
   ): Promise<Issue[]> {
+    const CONCURRENCY = 5;
     const hydratedIssues: Issue[] = [];
 
-    for (const issue of issues) {
-      const issueKey = String(issue?.key || '');
-      if (!issueKey) {
-        hydratedIssues.push(issue);
-        continue;
-      }
-
-      const fullWorkLogs = await this.fetchAllWorkLogsForIssue(jira, issueKey, debugEnabled);
-      const existingWorklogField = issue?.fields?.worklog || {};
-
-      hydratedIssues.push({
-        ...issue,
-        fields: issue.fields
-          ? {
-              ...issue.fields,
-              worklog: {
-                ...existingWorklogField,
-                startAt: 0,
-                maxResults: fullWorkLogs.length,
-                total: fullWorkLogs.length,
-                worklogs: fullWorkLogs,
-              },
-            }
-          : {
-              worklog: {
-                ...existingWorklogField,
-                startAt: 0,
-                maxResults: fullWorkLogs.length,
-                total: fullWorkLogs.length,
-                worklogs: fullWorkLogs,
-              },
-            },
-      });
+    for (let i = 0; i < issues.length; i += CONCURRENCY) {
+      const batch = issues.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(
+        batch.map((issue) => this.hydrateOneIssue(jira, issue, debugEnabled)),
+      );
+      hydratedIssues.push(...results);
     }
 
     return hydratedIssues;
   }
+
+  private async hydrateOneIssue(
+    jira: JiraConfig,
+    issue: Issue,
+    debugEnabled: boolean,
+  ): Promise<Issue> {
+    const issueKey = String(issue?.key || '');
+    if (!issueKey) {
+      return issue;
+    }
+
+    const fullWorkLogs = await this.fetchAllWorkLogsForIssue(jira, issueKey, debugEnabled);
+    const existingWorklogField = issue?.fields?.worklog || {};
+    const worklog = {
+      ...existingWorklogField,
+      startAt: 0,
+      maxResults: fullWorkLogs.length,
+      total: fullWorkLogs.length,
+      worklogs: fullWorkLogs,
+    };
+
+    return {
+      ...issue,
+      fields: issue.fields
+        ? { ...issue.fields, worklog }
+        : { worklog },
+    };
+  }
+
 
   private async fetchAllWorkLogsForIssue(
     jira: JiraConfig,

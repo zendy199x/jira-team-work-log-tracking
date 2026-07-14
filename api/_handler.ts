@@ -1,17 +1,32 @@
 import 'dotenv/config';
 import 'reflect-metadata';
 
+import type {
+    IncomingMessage,
+    ServerResponse,
+} from 'node:http';
+
+import express, { type Express } from 'express';
+
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import express from 'express';
 
 import { AppModule } from '../src/app.module';
 
-type ApiRequest = {
+type RequestLike = {
     url: string;
+    path?: string;
+    method?: string;
 };
 
-type ExpressHandler = (req: ApiRequest, res: unknown, next?: () => void) => unknown;
+type ResponseLike = {
+    statusCode?: number;
+    on?: (event: 'finish', listener: () => void) => void;
+};
+
+type NextLike = () => void;
+
+type ExpressHandler = Express;
 
 let cachedHandler: ExpressHandler | null = null;
 
@@ -21,14 +36,41 @@ async function getHandler(): Promise<ExpressHandler> {
     }
 
     const expressApp = express();
-    expressApp.use((req: ApiRequest, _res: unknown, next: () => void) => {
-        if (req.url === '/api') {
-            req.url = '/';
-        } else if (req.url.startsWith('/api/')) {
-            req.url = req.url.slice('/api'.length) || '/';
+    expressApp.disable('x-powered-by');
+
+    // Vercel Analytics – track each API request with path and method
+    // Uses dynamic import because @vercel/analytics/server is ESM-only
+    expressApp.use((req: unknown, res: unknown, next: unknown) => {
+        const request = req as RequestLike;
+        const response = res as ResponseLike;
+        const nextFn = next as NextLike;
+
+        response.on?.('finish', () => {
+            import('@vercel/analytics/server')
+                .then(({ track }) =>
+                    track('api_request', {
+                        path: request.path || request.url,
+                        method: request.method || 'UNKNOWN',
+                        status: String(response.statusCode ?? ''),
+                    }),
+                )
+                .catch(() => { });
+        });
+
+        nextFn();
+    });
+
+    expressApp.use((req: unknown, _res: unknown, next: unknown) => {
+        const request = req as RequestLike;
+        const nextFn = next as NextLike;
+
+        if (request.url === '/api') {
+            request.url = '/';
+        } else if (request.url.startsWith('/api/')) {
+            request.url = request.url.slice('/api'.length) || '/';
         }
 
-        next();
+        nextFn();
     });
 
     const app = await NestFactory.create(
@@ -38,11 +80,11 @@ async function getHandler(): Promise<ExpressHandler> {
     );
 
     await app.init();
-    cachedHandler = expressApp as unknown as ExpressHandler;
-    return cachedHandler;
+    cachedHandler = expressApp;
+    return expressApp;
 }
 
-export default async function handler(req: unknown, res: unknown) {
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
     const appHandler = await getHandler();
-    return appHandler(req as ApiRequest, res);
+    return appHandler(req, res);
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { AggregatedData, AggregatedUser, Issue } from './report.types';
+import { normalizeAuthorName } from './report.utils';
 import { ReportDate, Timezone } from './value-objects';
 
 @Injectable()
@@ -18,7 +19,7 @@ export class ReportAggregationService {
           continue;
         }
 
-        const name = this.normalizeAuthorName(worklog?.author?.displayName || 'Unknown');
+        const name = normalizeAuthorName(worklog?.author?.displayName || 'Unknown');
         const seconds = worklog?.timeSpentSeconds || 0;
 
         if (!users[name]) {
@@ -31,11 +32,4 @@ export class ReportAggregationService {
 
     return { users, reportDate: reportDate.value };
   }
-
-  private normalizeAuthorName(rawName: string): string {
-    const name = rawName.trim();
-    const shortName = name.split('(')[0]?.trim();
-    return shortName || name;
-  }
-
 }
