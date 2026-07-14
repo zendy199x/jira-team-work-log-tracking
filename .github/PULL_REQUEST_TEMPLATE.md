@@ -30,6 +30,14 @@ Link issue(s) if available.
 - [ ] Changes are focused and minimal.
 - [ ] No secrets or sensitive values were added.
 - [ ] Team-specific hardcoded values were avoided.
+- [ ] `packageManager` and workflow pnpm versions are aligned.
+- [ ] Workflow Node version is compatible with `engines.node`.
+- [ ] Docs updated when behavior or deployment flow changed.
+
+## Documentation Checklist
+
+- [ ] `README.md` reflects current setup, env vars, routes, and deployment behavior.
+- [ ] `README.vi.md` is synced for major setup/deploy/runtime changes.
 
 ## Testing
 

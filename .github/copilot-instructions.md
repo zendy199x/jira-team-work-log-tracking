@@ -62,6 +62,22 @@ These instructions apply to the full repository. For file-specific rules under `
   - `pnpm run test:coverage`
   - `pnpm run build`
 
+## CI and Toolchain Consistency
+
+- Keep Node runtime aligned across `package.json` (`engines.node`), local development, and GitHub Actions workflows.
+- Keep pnpm aligned across:
+  - `package.json` `packageManager`
+  - workflow `pnpm/action-setup` version input
+- Do not pin conflicting pnpm versions between workflow files and `package.json`.
+- Prefer explicit Node versions in workflows (currently Node 24) to avoid runner-default drift.
+
+## Documentation Sync Rules
+
+- When changing runtime behavior or deployment workflow, update docs in the same PR.
+- Keep `README.md` as canonical English documentation.
+- Keep `README.vi.md` synchronized when major setup, environment, scheduler, or CI behavior changes.
+- Ensure examples in docs reflect current route contracts and scheduler behavior.
+
 ## Change Safety
 
 - Prefer minimal, targeted edits.

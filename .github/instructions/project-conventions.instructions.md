@@ -47,6 +47,14 @@ applyTo: "src/report/**, src/health.controller.ts, README.md, .env.example"
   - troubleshooting
 - Do not use local folder names as product identity.
 - If an architecture tree format is explicitly requested, use `----|` style.
+- Keep README scheduler and deployment details synchronized with actual workflow files.
+- When `README.md` setup/deploy/env sections change significantly, keep `README.vi.md` in sync.
+
+## CI and Dependency Rules
+
+- Keep workflow Node version compatible with `package.json` `engines.node`.
+- Keep `pnpm/action-setup` version aligned with `package.json` `packageManager`.
+- Avoid partial dependency upgrades that leave lockfile/toolchain versions inconsistent.
 
 ## Change Safety
 
