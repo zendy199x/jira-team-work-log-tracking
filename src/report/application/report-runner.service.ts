@@ -176,28 +176,18 @@ export class ReportRunnerService {
         return undefined;
       }
 
-      const sprintName = this.formatSprintNameForDisplay(sprint.name);
-      if (!sprintName) {
-        return undefined;
-      }
-
       const start = this.formatSprintDateForDisplay(sprint.startDate);
       const end = this.formatSprintDateForDisplay(sprint.endDate);
       if (!start || !end) {
         return undefined;
       }
 
-      return `${sprintName} | ${start} to ${end}`;
+      return `${sprint.name} | ${start} to ${end}`;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(`Skip sprint summary because sprint fetch failed: ${message}`);
       return undefined;
     }
-  }
-
-  private formatSprintNameForDisplay(rawName: string): string {
-    const normalizedName = String(rawName || '').trim();
-    return normalizedName.replace(/^(?:\[[^\]]+\]\s*)+/, '').trim();
   }
 
   private formatSprintDateForDisplay(rawDate: string): string | undefined {

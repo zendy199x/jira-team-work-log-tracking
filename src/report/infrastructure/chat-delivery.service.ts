@@ -5,10 +5,10 @@ import { Injectable } from '@nestjs/common';
 
 import type { ChatGatewayPort } from '../domain/report.ports';
 import {
-    type AggregatedData,
-    type AggregatedUser,
-    type ChatDeliveryConfig,
-    ChatMode,
+  type AggregatedData,
+  type AggregatedUser,
+  type ChatDeliveryConfig,
+  ChatMode,
 } from '../domain/report.types';
 import { formatHoursFromSeconds } from '../domain/report.utils';
 
@@ -132,8 +132,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
   }): string {
     const normalizedTitle = this.formatReportTitleForDisplay(data.reportTitle);
     const sprintLine = data.sprintSummaryLine || '';
-    const headerLines = [normalizedTitle, sprintLine].filter((line) => Boolean(line));
-    return `${headerLines.join('\n')}\n\nChecked At: ${data.reportDateTimeLabel}`;
+    return `${normalizedTitle}${sprintLine}Checked at: ${data.reportDateTimeLabel}`;
   }
 
   private formatReportTitleForDisplay(reportTitle: string): string {

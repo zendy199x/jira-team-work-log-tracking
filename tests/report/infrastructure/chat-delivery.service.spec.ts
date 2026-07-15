@@ -47,7 +47,7 @@ describe('ChatDeliveryService', () => {
     expect(payload.cardsV2).toBeDefined();
     expect(payload.text).toBeDefined();
     expect(JSON.stringify(payload)).toContain('-+-[BKM4 WORK LOG REPORT]-+-');
-    expect(JSON.stringify(payload)).toContain('Checked At: May 9');
+    expect(JSON.stringify(payload)).toContain('Checked at: May 9');
     expect(JSON.stringify(payload)).toContain('```');
   });
 
@@ -89,7 +89,7 @@ describe('ChatDeliveryService', () => {
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     const text = String(payload.text || '');
     expect(text).toContain('Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026');
-    expect(text).toContain('-+-[BKM4 WORK LOG REPORT]-+-\nSprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nChecked At: May 9');
+    expect(text).toContain('-+-[BKM4 WORK LOG REPORT]-+-Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026Checked at: May 9');
   });
 
   it('sends app-mode message with bearer token', async () => {
