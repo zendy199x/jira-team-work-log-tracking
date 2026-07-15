@@ -43,3 +43,54 @@ export function formatHoursFromSeconds(totalSeconds: number): string {
 
   return `${normalized}h`;
 }
+
+/**
+ * Returns English ordinal suffix for a day number.
+ * e.g. 1 -> st, 2 -> nd, 3 -> rd, 11 -> th
+ */
+export function getOrdinalSuffix(day: number): string {
+  const lastTwoDigits = day % 100;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+    return 'th';
+  }
+
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+/**
+ * Formats ISO-like date strings to "Mon 3rd, 2026".
+ * e.g. 2026-07-03T00:00:00.000+07:00 -> Jul 3rd, 2026
+ */
+export function formatIsoDateToEnglishWithOrdinal(rawDate: string): string | undefined {
+  const normalized = String(rawDate || '').trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(normalized);
+  if (!match) {
+    return undefined;
+  }
+
+  const [, year, month, day] = match;
+  const monthNumber = Number(month);
+  const dayNumber = Number(day);
+  if (!Number.isInteger(monthNumber) || monthNumber < 1 || monthNumber > 12) {
+    return undefined;
+  }
+  if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 31) {
+    return undefined;
+  }
+
+  const monthText = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ][monthNumber - 1];
+
+  return `${monthText} ${dayNumber}${getOrdinalSuffix(dayNumber)}, ${year}`;
+}

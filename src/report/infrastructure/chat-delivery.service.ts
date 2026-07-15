@@ -5,10 +5,10 @@ import { Injectable } from '@nestjs/common';
 
 import type { ChatGatewayPort } from '../domain/report.ports';
 import {
-    type AggregatedData,
-    type AggregatedUser,
-    type ChatDeliveryConfig,
-    ChatMode,
+  type AggregatedData,
+  type AggregatedUser,
+  type ChatDeliveryConfig,
+  ChatMode,
 } from '../domain/report.types';
 import { formatHoursFromSeconds } from '../domain/report.utils';
 
@@ -132,17 +132,20 @@ export class ChatDeliveryService implements ChatGatewayPort {
   }): string {
     const normalizedTitle = this.formatReportTitleForDisplay(data.reportTitle);
     const sprintLine = data.sprintSummaryLine || '';
-    return `${normalizedTitle}${sprintLine}Date: ${data.reportDateTimeLabel}`;
+    return `${normalizedTitle}${sprintLine}Checked at: ${data.reportDateTimeLabel}`;
   }
 
   private formatReportTitleForDisplay(reportTitle: string): string {
     const rawTitle = String(reportTitle || '').trim();
-    const match = rawTitle.match(/^-\+-\s*(.*?)\s*-\+-$/);
-    if (!match) {
+    if (!rawTitle.startsWith('-+-') || !rawTitle.endsWith('-+-')) {
       return rawTitle;
     }
 
-    const titleBody = String(match[1] || '').trim();
+    const titleBody = rawTitle.slice(3, -3).trim();
+    if (!titleBody) {
+      return rawTitle;
+    }
+
     return `-+-[${titleBody}]-+-`;
   }
 

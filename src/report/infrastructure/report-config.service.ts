@@ -1,20 +1,20 @@
 import {
-  Injectable,
-  Logger,
+    Injectable,
+    Logger,
 } from '@nestjs/common';
 
 import type { ReportConfigPort } from '../domain/report.ports';
 import {
-  type AggregationDebugConfig,
-  type ChatDeliveryConfig,
-  ChatMode,
-  type ReportRuntimeConfig,
+    type AggregationDebugConfig,
+    type ChatDeliveryConfig,
+    ChatMode,
+    type ReportRuntimeConfig,
 } from '../domain/report.types';
-import { normalizeAuthorName } from '../domain/report.utils';
+import { getOrdinalSuffix, normalizeAuthorName } from '../domain/report.utils';
 import {
-  ReportDate,
-  TeamName,
-  Timezone,
+    ReportDate,
+    TeamName,
+    Timezone,
 } from '../domain/value-objects';
 
 @Injectable()
@@ -262,6 +262,10 @@ export class ReportConfigService implements ReportConfigPort {
     const parts = formatter.formatToParts(date);
     const month = parts.find((part) => part.type === 'month')?.value || '';
     const day = parts.find((part) => part.type === 'day')?.value || '';
+    const dayNumber = Number(day);
+    const daySuffix = Number.isInteger(dayNumber) && dayNumber > 0
+      ? getOrdinalSuffix(dayNumber)
+      : '';
     const year = parts.find((part) => part.type === 'year')?.value || '';
     const hour = parts.find((part) => part.type === 'hour')?.value || '';
     const minute = parts.find((part) => part.type === 'minute')?.value || '';
@@ -269,7 +273,7 @@ export class ReportConfigService implements ReportConfigPort {
     const dayPeriod = parts.find((part) => part.type === 'dayPeriod')?.value || '';
     const timeZoneName = parts.find((part) => part.type === 'timeZoneName')?.value || '';
 
-    return `${month} ${day}, ${year}, ${hour}:${minute}:${second} ${dayPeriod} (${timeZoneName})`;
+    return `${month} ${day}${daySuffix}, ${year}, ${hour}:${minute}:${second} ${dayPeriod} (${timeZoneName})`;
   }
 
   private buildRetryReportUrl(): string | null {
