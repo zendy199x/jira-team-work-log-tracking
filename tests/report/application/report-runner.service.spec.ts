@@ -85,6 +85,32 @@ describe('ReportRunnerService', () => {
     expect(sentPayload.sprintSummaryLine).toBe('Sprint 10 | Nov 15th, 2026 to Nov 21st, 2026');
   });
 
+  it('removes leading team tag from sprint summary line', async () => {
+    configService.getRuntimeConfig.mockReturnValue({
+      timezone: 'UTC',
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
+      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      jiraBoardId: 8463,
+      jiraQuery: 'project = BKM4',
+      aggregationDebug: { enabled: false, authorFilters: [] },
+      jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
+      jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
+      chat: { mode: 'webhook', webhook: 'https://chat.example.com' },
+    });
+
+    jiraGateway.fetchActiveSprint.mockResolvedValue({
+      name: '[BKM4] Sprint 10',
+      startDate: '2026-07-03T00:00:00.000+07:00',
+      endDate: '2026-07-16T23:59:59.000+07:00',
+    });
+
+    await service.runDailyReport('manual');
+
+    const sentPayload = chatGateway.sendReport.mock.calls[0][1];
+    expect(sentPayload.sprintSummaryLine).toBe('Sprint 10 | Jul 3rd, 2026 to Jul 16th, 2026');
+  });
+
   it('formats ordinal suffixes for sprint dates', async () => {
     configService.getRuntimeConfig.mockReturnValue({
       timezone: 'UTC',

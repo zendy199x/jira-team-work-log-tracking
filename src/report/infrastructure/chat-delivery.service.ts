@@ -132,17 +132,21 @@ export class ChatDeliveryService implements ChatGatewayPort {
   }): string {
     const normalizedTitle = this.formatReportTitleForDisplay(data.reportTitle);
     const sprintLine = data.sprintSummaryLine || '';
-    return `${normalizedTitle}${sprintLine}Date: ${data.reportDateTimeLabel}`;
+    const headerLines = [normalizedTitle, sprintLine].filter((line) => Boolean(line));
+    return `${headerLines.join('\n')}\n\nChecked At: ${data.reportDateTimeLabel}`;
   }
 
   private formatReportTitleForDisplay(reportTitle: string): string {
     const rawTitle = String(reportTitle || '').trim();
-    const match = rawTitle.match(/^-\+-\s*(.*?)\s*-\+-$/);
-    if (!match) {
+    if (!rawTitle.startsWith('-+-') || !rawTitle.endsWith('-+-')) {
       return rawTitle;
     }
 
-    const titleBody = String(match[1] || '').trim();
+    const titleBody = rawTitle.slice(3, -3).trim();
+    if (!titleBody) {
+      return rawTitle;
+    }
+
     return `-+-[${titleBody}]-+-`;
   }
 
