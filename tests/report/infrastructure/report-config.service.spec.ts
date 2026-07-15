@@ -336,4 +336,19 @@ describe('ReportConfigService', () => {
     setBaseEnv();
     expect(normalizeAuthorName('()')).toBe('()');
   });
+
+  it('formats day with ordinal suffix in reportDateTimeLabel', () => {
+    setBaseEnv();
+    const service = new ReportConfigService();
+
+    const label1 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-01T10:00:00Z'), 'UTC');
+    const label2 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-02T10:00:00Z'), 'UTC');
+    const label3 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-03T10:00:00Z'), 'UTC');
+    const label11 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-11T10:00:00Z'), 'UTC');
+
+    expect(label1).toContain('1st');
+    expect(label2).toContain('2nd');
+    expect(label3).toContain('3rd');
+    expect(label11).toContain('11th');
+  });
 });

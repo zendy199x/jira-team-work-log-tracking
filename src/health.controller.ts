@@ -1,3 +1,5 @@
+/* cspell:disable */
+
 import { Controller, Get, Header } from '@nestjs/common';
 
 @Controller()
@@ -5,8 +7,31 @@ export class HealthController {
   private readonly teamName = (process.env.TEAM_NAME || 'TEAM').trim() || 'TEAM';
   private readonly apiBasePath = process.env.VERCEL ? '/api' : '';
   private readonly teamSlug =
-    this.teamName.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') ||
+    this.teamName
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9]+/g, '-')
+      .replaceAll(/^-+/g, '')
+      .replaceAll(/-+/g, '-')
+      .replaceAll(/^-+/g, '');
+
+  private readonly normalizedTeamSlug =
+    HealthController.trimEdgeHyphens(this.teamSlug) ||
     'team';
+
+  private static trimEdgeHyphens(value: string): string {
+    let start = 0;
+    let end = value.length;
+
+    while (start < end && value[start] === '-') {
+      start += 1;
+    }
+
+    while (end > start && value[end - 1] === '-') {
+      end -= 1;
+    }
+
+    return value.slice(start, end);
+  }
 
   private endpoint(pathname: string): string {
     const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`;
@@ -404,7 +429,7 @@ export class HealthController {
               <tr>
                 <td><code>APP_BASE_URL</code></td>
                 <td><span class="env-chip optional">Optional</span></td>
-                <td class="mono">https://${this.teamSlug}-jira-work-log-tracking.vercel.app</td>
+                <td class="mono">https://${this.normalizedTeamSlug}-jira-work-log-tracking.vercel.app</td>
                 <td>Used to build retry link for Chat cards.</td>
               </tr>
               <tr>
@@ -712,7 +737,7 @@ export class HealthController {
           </div>
           <div class="stat">
             <div class="label">Target Domain</div>
-            <div class="value">${this.teamSlug}-jira-work-log-tracking.vercel.app</div>
+            <div class="value">${this.normalizedTeamSlug}-jira-work-log-tracking.vercel.app</div>
           </div>
           <div class="stat">
             <div class="label">Auth Mode</div>
@@ -757,8 +782,8 @@ pnpm run start:dev</pre>
           <pre>git checkout main
 git pull --ff-only origin main
 npx -y vercel deploy --prod --yes
-npx -y vercel alias set &lt;deployment-url&gt; ${this.teamSlug}-jira-work-log-tracking.vercel.app</pre>
-          <div class="callout ok">Recommended: keep production domain as <code>${this.teamSlug}-jira-work-log-tracking.vercel.app</code>.</div>
+npx -y vercel alias set &lt;deployment-url&gt; ${this.normalizedTeamSlug}-jira-work-log-tracking.vercel.app</pre>
+          <div class="callout ok">Recommended: keep production domain as <code>${this.normalizedTeamSlug}-jira-work-log-tracking.vercel.app</code>.</div>
         </article>
 
         <article class="card">
@@ -805,7 +830,7 @@ npx -y vercel env add WEBHOOK production</pre>
             <li>Trigger <code>${this.endpoint('/reports/run')}</code> using <code>x-cron-secret</code> or <code>?token=</code>.</li>
             <li>Check Google Chat receives report + action buttons.</li>
           </ol>
-          <pre>curl -X POST "https://${this.teamSlug}-jira-work-log-tracking.vercel.app/api/reports/run?token=YOUR_CRON_SECRET"</pre>
+          <pre>curl -X POST "https://${this.normalizedTeamSlug}-jira-work-log-tracking.vercel.app/api/reports/run?token=YOUR_CRON_SECRET"</pre>
         </article>
 
         <article class="card full">
@@ -858,7 +883,7 @@ npx -y vercel env add WEBHOOK production</pre>
   health() {
     return {
       ok: true,
-      service: `${this.teamSlug}-jira-work-log-tracking-api`,
+      service: `${this.normalizedTeamSlug}-jira-work-log-tracking-api`,
       now: new Date().toISOString(),
     };
   }

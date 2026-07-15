@@ -5,10 +5,10 @@ import { Injectable } from '@nestjs/common';
 
 import type { ChatGatewayPort } from '../domain/report.ports';
 import {
-    type AggregatedData,
-    type AggregatedUser,
-    type ChatDeliveryConfig,
-    ChatMode,
+  type AggregatedData,
+  type AggregatedUser,
+  type ChatDeliveryConfig,
+  ChatMode,
 } from '../domain/report.types';
 import { formatHoursFromSeconds } from '../domain/report.utils';
 
@@ -64,6 +64,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
     reportTitle: string;
     sprintSummaryLine?: string;
   }): string {
+    const headerLine = this.buildHeaderLine(data);
     const rows = Object.entries(data.users)
       .map(([name, user]) => {
         const totalSeconds = user.logs[data.reportDate] || 0;
@@ -79,10 +80,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
 
       return [
         '```',
-        data.reportTitle,
-        ...(data.sprintSummaryLine ? [data.sprintSummaryLine] : []),
-        ...(data.sprintSummaryLine ? [''] : []),
-        `Date: ${data.reportDateTimeLabel}`,
+        headerLine,
         noDataBorder,
         noDataLine,
         noDataBorder,
@@ -115,10 +113,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
 
     return [
       '```',
-      data.reportTitle,
-      ...(data.sprintSummaryLine ? [data.sprintSummaryLine] : []),
-      ...(data.sprintSummaryLine ? [''] : []),
-      `Date: ${data.reportDateTimeLabel}`,
+      headerLine,
       border,
       header,
       border,
@@ -128,6 +123,30 @@ export class ChatDeliveryService implements ChatGatewayPort {
       border,
       '```',
     ].join('\n');
+  }
+
+  private buildHeaderLine(data: {
+    reportTitle: string;
+    reportDateTimeLabel: string;
+    sprintSummaryLine?: string;
+  }): string {
+    const normalizedTitle = this.formatReportTitleForDisplay(data.reportTitle);
+    const sprintLine = data.sprintSummaryLine || '';
+    return `${normalizedTitle}${sprintLine}Checked at: ${data.reportDateTimeLabel}`;
+  }
+
+  private formatReportTitleForDisplay(reportTitle: string): string {
+    const rawTitle = String(reportTitle || '').trim();
+    if (!rawTitle.startsWith('-+-') || !rawTitle.endsWith('-+-')) {
+      return rawTitle;
+    }
+
+    const titleBody = rawTitle.slice(3, -3).trim();
+    if (!titleBody) {
+      return rawTitle;
+    }
+
+    return `-+-[${titleBody}]-+-`;
   }
 
   private buildRetryButtons(chat: ChatDeliveryConfig): Array<Record<string, unknown>> {
