@@ -1,6 +1,6 @@
 import { normalizeAuthorName } from '../../../src/report/domain/report.utils';
 import {
-    ReportConfigService,
+  ReportConfigService,
 } from '../../../src/report/infrastructure/report-config.service';
 
 describe('ReportConfigService', () => {
@@ -29,6 +29,7 @@ describe('ReportConfigService', () => {
     process.env.JIRA_EMAIL = 'bot@example.com';
     process.env.JIRA_API_TOKEN = 'token';
     process.env.WEBHOOK = 'https://chat.googleapis.com/v1/spaces/x/messages?key=a&token=b';
+    process.env.CRON_SECRET = 'secret';
   }
 
   it('builds runtime config in webhook mode', () => {
@@ -65,6 +66,26 @@ describe('ReportConfigService', () => {
     }
     expect(config.chat.serviceAccountPrivateKey).toContain('\n');
     expect((config.chat as { reportUrl?: string }).reportUrl).toContain('/reports/retry');
+  });
+
+  it('supports app mode without retry url when APP_BASE_URL is invalid', () => {
+    setBaseEnv();
+    process.env.GOOGLE_CHAT_MODE = 'app';
+    process.env.GOOGLE_CHAT_SPACE = 'spaces/AAA';
+    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL = 'svc@example.com';
+    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_PRIVATE_KEY = String.raw`line1\nline2`;
+    process.env.APP_BASE_URL = 'not-a-valid-url';
+
+    const service = new ReportConfigService();
+    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const config = service.getRuntimeConfig();
+
+    expect(config.chat.mode).toBe('app');
+    if (config.chat.mode !== 'app') {
+      throw new Error('Expected app chat mode');
+    }
+    expect((config.chat as { reportUrl?: string }).reportUrl).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith('APP_BASE_URL is invalid. Retry button will be skipped.');
   });
 
   it('normalizes localhost https APP_BASE_URL to http for retry url', () => {

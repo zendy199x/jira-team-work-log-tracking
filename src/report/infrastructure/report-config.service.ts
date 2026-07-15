@@ -1,20 +1,20 @@
 import {
-    Injectable,
-    Logger,
+  Injectable,
+  Logger,
 } from '@nestjs/common';
 
 import type { ReportConfigPort } from '../domain/report.ports';
 import {
-    type AggregationDebugConfig,
-    type ChatDeliveryConfig,
-    ChatMode,
-    type ReportRuntimeConfig,
+  type AggregationDebugConfig,
+  type ChatDeliveryConfig,
+  ChatMode,
+  type ReportRuntimeConfig,
 } from '../domain/report.types';
 import { getOrdinalSuffix, normalizeAuthorName } from '../domain/report.utils';
 import {
-    ReportDate,
-    TeamName,
-    Timezone,
+  ReportDate,
+  TeamName,
+  Timezone,
 } from '../domain/value-objects';
 
 @Injectable()
@@ -294,7 +294,7 @@ export class ReportConfigService implements ReportConfigPort {
     const configuredApiBasePath = (process.env.API_BASE_PATH || '').trim();
     const defaultApiBasePath = process.env.VERCEL ? '/api' : '';
     const rawApiBasePath = configuredApiBasePath || defaultApiBasePath;
-    const trimmedApiBasePath = rawApiBasePath.replaceAll(/^\/+|\/+$/g, '');
+    const trimmedApiBasePath = this.trimSlashes(rawApiBasePath);
     const normalizedApiBasePath = rawApiBasePath ? `/${trimmedApiBasePath}` : '';
 
     const retryUrl = new URL(`${normalizedApiBasePath}/reports/retry`, baseUrl);
@@ -332,5 +332,20 @@ export class ReportConfigService implements ReportConfigPort {
       normalized === '::1' ||
       normalized.endsWith('.localhost')
     );
+  }
+
+  private trimSlashes(value: string): string {
+    let start = 0;
+    let end = value.length;
+
+    while (start < end && value[start] === '/') {
+      start += 1;
+    }
+
+    while (end > start && value[end - 1] === '/') {
+      end -= 1;
+    }
+
+    return value.slice(start, end);
   }
 }

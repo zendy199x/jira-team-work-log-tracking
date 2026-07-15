@@ -83,4 +83,9 @@ describe('HealthController', () => {
     expect(controller['endpoint']('/health')).toBe('/api/health');
     expect(controller['endpoint']('help')).toBe('/api/help');
   });
+
+  it('trims leading and trailing hyphens from slug helper', () => {
+    expect(HealthController['trimEdgeHyphens']('---team---')).toBe('team');
+    expect(HealthController['trimEdgeHyphens']('----')).toBe('');
+  });
 });

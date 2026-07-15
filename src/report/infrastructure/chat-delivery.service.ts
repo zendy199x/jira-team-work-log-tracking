@@ -132,7 +132,8 @@ export class ChatDeliveryService implements ChatGatewayPort {
   }): string {
     const normalizedTitle = this.formatReportTitleForDisplay(data.reportTitle);
     const sprintLine = data.sprintSummaryLine || '';
-    return `${normalizedTitle}${sprintLine}Checked at: ${data.reportDateTimeLabel}`;
+    const headerLines = [normalizedTitle, sprintLine].filter(Boolean);
+    return `${headerLines.join('\n')}\n\nChecked at: ${data.reportDateTimeLabel}`;
   }
 
   private formatReportTitleForDisplay(reportTitle: string): string {

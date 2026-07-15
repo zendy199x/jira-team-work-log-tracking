@@ -15,6 +15,17 @@ describe('ReportController', () => {
     jest.clearAllMocks();
   });
 
+  it('falls back team name to TEAM when TEAM_NAME is blank', () => {
+    const originalTeamName = process.env.TEAM_NAME;
+    process.env.TEAM_NAME = '   ';
+
+    const localController = new ReportController(service as unknown as ReportService);
+    const html = localController.retryPage();
+
+    expect(html).toContain('Retry report - TEAM');
+    process.env.TEAM_NAME = originalTeamName;
+  });
+
   it('runs report for authorized run endpoint', async () => {
     service.canTriggerWithToken.mockReturnValue(true);
     service.runDailyReport.mockResolvedValue({ reportDate: '2026-05-09' });

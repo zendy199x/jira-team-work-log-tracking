@@ -3,10 +3,10 @@ import { JWT } from 'google-auth-library';
 
 import { ChatMode } from '../../../src/report/domain/report.types';
 import {
-    formatHoursFromSeconds,
+  formatHoursFromSeconds,
 } from '../../../src/report/domain/report.utils';
 import {
-    ChatDeliveryService,
+  ChatDeliveryService,
 } from '../../../src/report/infrastructure/chat-delivery.service';
 
 const authorizeMock = jest.fn().mockResolvedValue({ access_token: 'mock-token' });
@@ -89,7 +89,7 @@ describe('ChatDeliveryService', () => {
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     const text = String(payload.text || '');
     expect(text).toContain('Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026');
-    expect(text).toContain('-+-[BKM4 WORK LOG REPORT]-+-Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026Checked at: May 9');
+    expect(text).toContain('-+-[BKM4 WORK LOG REPORT]-+-\nSprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nChecked at: May 9');
   });
 
   it('sends app-mode message with bearer token', async () => {
@@ -238,5 +238,60 @@ describe('ChatDeliveryService', () => {
 
     expect(output).toContain('Bob');
     expect(output).not.toContain('Alice');
+  });
+
+  it('keeps raw report title when title is not wrapped by -+- markers', () => {
+    const service = new ChatDeliveryService();
+    const output = service['buildChatTextReport']({
+      users: { Bob: { logs: { '2026-05-09': 3600 } } },
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9',
+      reportTitle: 'BKM4 WORK LOG REPORT',
+    });
+
+    expect(output).toContain('BKM4 WORK LOG REPORT');
+    expect(output).not.toContain('-+-[BKM4 WORK LOG REPORT]-+-');
+  });
+
+  it('keeps raw report title when wrapped marker has empty body', () => {
+    const service = new ChatDeliveryService();
+    const output = service['buildChatTextReport']({
+      users: { Bob: { logs: { '2026-05-09': 3600 } } },
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9',
+      reportTitle: '-+-   -+-',
+    });
+
+    expect(output).toContain('-+-   -+-');
+  });
+
+  it('handles undefined report title by rendering empty title line', () => {
+    const service = new ChatDeliveryService();
+    const output = service['buildChatTextReport']({
+      users: { Bob: { logs: { '2026-05-09': 3600 } } },
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9',
+      reportTitle: undefined as unknown as string,
+    });
+
+    expect(output).toContain('Checked at: May 9');
+  });
+
+  it('returns cached token without re-authorizing when cache is still valid', async () => {
+    const service = new ChatDeliveryService();
+    service['_cachedToken'] = {
+      value: 'cached-token',
+      expiresAt: Date.now() + 5 * 60_000,
+    };
+
+    const token = await service['getGoogleChatAccessToken']({
+      mode: ChatMode.APP,
+      space: 'spaces/AAA',
+      serviceAccountEmail: 'svc@example.com',
+      serviceAccountPrivateKey: 'key',
+    });
+
+    expect(token).toBe('cached-token');
+    expect(authorizeMock).not.toHaveBeenCalled();
   });
 });
