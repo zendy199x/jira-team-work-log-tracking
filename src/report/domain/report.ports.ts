@@ -1,4 +1,5 @@
 import type {
+  AggregationAnomalies,
     AggregatedData,
     ChatDeliveryConfig,
     Issue,
@@ -25,7 +26,12 @@ export interface JiraGatewayPort {
 export interface ChatGatewayPort {
   sendReport(
     chat: ChatDeliveryConfig,
-    data: AggregatedData & { reportDateTimeLabel: string; reportTitle: string; sprintSummaryLine?: string },
+    data: AggregatedData & {
+      reportDateTimeLabel: string;
+      reportTitle: string;
+      sprintSummaryLine?: string;
+      anomalies?: AggregationAnomalies;
+    },
     jiraCheckUrl: string,
   ): Promise<void>;
 }

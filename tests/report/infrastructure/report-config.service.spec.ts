@@ -1,6 +1,6 @@
 import { normalizeAuthorName } from '../../../src/report/domain/report.utils';
 import {
-  ReportConfigService,
+    ReportConfigService,
 } from '../../../src/report/infrastructure/report-config.service';
 
 describe('ReportConfigService', () => {
@@ -41,6 +41,7 @@ describe('ReportConfigService', () => {
 
     expect(config.reportTitle).toBe('-+-BKM4 WORK LOG REPORT-+-');
     expect(config.jiraQuery).toContain('project = BKM4');
+    expect(config.jiraAnomalyQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-2d)');
     expect(config.jiraCheckUrl).toContain('/projects/BKM4');
     expect(config.chat.mode).toBe('webhook');
     if (config.chat.mode !== 'webhook') {
@@ -252,6 +253,19 @@ describe('ReportConfigService', () => {
     const config = service.getRuntimeConfig();
 
     expect(config.jiraQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-1d)');
+  });
+
+  it('supports JIRA_ANOMALY_JQL_OVERRIDE independently from report JQL', () => {
+    setBaseEnv();
+    process.env.JIRA_JQL_OVERRIDE = 'project = {TEAM_NAME} AND type IN ("Sub-task")';
+    process.env.JIRA_ANOMALY_JQL_OVERRIDE =
+      'project = {TEAM_NAME} AND worklogDate >= startOfDay(-7d)';
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    expect(config.jiraQuery).toBe('project = BKM4 AND type IN ("Sub-task")');
+    expect(config.jiraAnomalyQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-7d)');
   });
 
   it('omits retry report token when CRON_SECRET is empty and warns', () => {

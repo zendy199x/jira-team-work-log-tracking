@@ -23,6 +23,7 @@ describe('ReportRunnerService', () => {
         reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
         reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
         jiraQuery: 'project = BKM4',
+        jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
         aggregationDebug: { enabled: true, authorFilters: [] },
         jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
         jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b', requestConfig: {} },
@@ -38,6 +39,10 @@ describe('ReportRunnerService', () => {
     };
     aggregationService = {
       aggregateByReportDate: jest.fn().mockReturnValue({ users: { Alice: { logs: { '2026-05-09': 3600 } } }, reportDate: '2026-05-09' }),
+      aggregateAnomaliesByReportDate: jest.fn().mockReturnValue({
+        beforeSprintStart: { users: {} },
+        onParentIssue: { users: {} },
+      }),
     };
     chatGateway = { sendReport: jest.fn().mockResolvedValue(undefined) };
 
@@ -46,10 +51,33 @@ describe('ReportRunnerService', () => {
   });
 
   it('runs daily report and returns summary', async () => {
+    jiraGateway.fetchIssuesWithWorkLogs
+      .mockResolvedValueOnce([{ key: 'BKM4-1' }])
+      .mockResolvedValueOnce([{ key: 'BKM4-1' }, { key: 'BKM4-2' }]);
+
     const summary = await service.runDailyReport('manual');
 
-    expect(jiraGateway.fetchIssuesWithWorkLogs).toHaveBeenCalled();
+    expect(jiraGateway.fetchIssuesWithWorkLogs).toHaveBeenCalledTimes(2);
+    expect(jiraGateway.fetchIssuesWithWorkLogs).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      'project = BKM4',
+      true,
+    );
+    expect(jiraGateway.fetchIssuesWithWorkLogs).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      'project = BKM4 AND worklogDate >= startOfDay(-2d)',
+      true,
+    );
     expect(aggregationService.aggregateByReportDate).toHaveBeenCalled();
+    expect(aggregationService.aggregateAnomaliesByReportDate).toHaveBeenCalledWith(
+      [{ key: 'BKM4-1' }, { key: 'BKM4-2' }],
+      expect.anything(),
+      expect.anything(),
+      undefined,
+      new Set(['BKM4-1']),
+    );
     expect(chatGateway.sendReport).toHaveBeenCalled();
     expect(summary).toEqual({
       source: 'manual',
@@ -67,6 +95,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -85,6 +114,25 @@ describe('ReportRunnerService', () => {
     expect(sentPayload.sprintSummaryLine).toBe('Sprint 10 | Nov 15th, 2026 to Nov 21st, 2026');
   });
 
+  it('passes anomaly data to chat payload', async () => {
+    aggregationService.aggregateAnomaliesByReportDate.mockReturnValue({
+      beforeSprintStart: {
+        users: {
+          Zendy: {
+            totalSeconds: 7200,
+            issues: [{ issueKey: 'BKM4-1111', totalSeconds: 7200 }],
+          },
+        },
+      },
+      onParentIssue: { users: {} },
+    });
+
+    await service.runDailyReport('manual');
+
+    const sentPayload = chatGateway.sendReport.mock.calls[0][1];
+    expect(sentPayload.anomalies.beforeSprintStart.users.Zendy.totalSeconds).toBe(7200);
+  });
+
   it('removes leading team tag from sprint summary line', async () => {
     configService.getRuntimeConfig.mockReturnValue({
       timezone: 'UTC',
@@ -93,6 +141,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -119,6 +168,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -145,6 +195,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -170,6 +221,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -196,6 +248,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -222,6 +275,7 @@ describe('ReportRunnerService', () => {
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraBoardId: 8463,
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b' },
@@ -345,6 +399,7 @@ describe('ReportRunnerService', () => {
       reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: true, authorFilters: ['alice'] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b', requestConfig: {} },
@@ -373,6 +428,7 @@ describe('ReportRunnerService', () => {
       reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: true, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b', requestConfig: {} },
@@ -398,6 +454,7 @@ describe('ReportRunnerService', () => {
       reportDateTimeLabel: 'May 9, 2026, 1:00:00 PM (+00:00)',
       reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
       jiraQuery: 'project = BKM4',
+      jiraAnomalyQuery: 'project = BKM4 AND worklogDate >= startOfDay(-2d)',
       aggregationDebug: { enabled: false, authorFilters: [] },
       jiraCheckUrl: 'https://jira.example.com/projects/BKM4',
       jira: { jiraDomain: 'https://jira.example.com', jiraEmail: 'a', jiraApiToken: 'b', requestConfig: {} },

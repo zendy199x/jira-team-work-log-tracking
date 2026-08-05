@@ -2,18 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import type { JiraGatewayPort } from '../domain/report.ports';
 import type {
-  Issue,
-  JiraConfig,
-  SearchResponse,
-  SprintSnapshot,
-  WorklogItem,
-  WorklogResponse,
+    Issue,
+    JiraConfig,
+    SearchResponse,
+    SprintSnapshot,
+    WorklogItem,
+    WorklogResponse,
 } from '../domain/report.types';
 
 const JIRA_SEARCH_PATH = '/rest/api/3/search/jql';
 const JIRA_ISSUE_WORKLOG_PATH = '/rest/api/3/issue';
 const JIRA_BOARD_SPRINT_PATH = '/rest/agile/1.0/board';
-const SEARCH_FIELDS = ['worklog'];
+const SEARCH_FIELDS = ['worklog', 'created', 'parent', 'subtasks', 'issuetype', 'sprint', 'closedSprints'];
 const SEARCH_EXPAND = 'worklog';
 const PAGE_SIZE = 100;
 const WORKLOG_PAGE_SIZE = 100;

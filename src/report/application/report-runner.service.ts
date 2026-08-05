@@ -1,18 +1,18 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ReportAggregationService } from '../domain/report-aggregation.service';
 import {
-  CHAT_GATEWAY_PORT,
-  JIRA_GATEWAY_PORT,
-  REPORT_CONFIG_PORT,
-  type ChatGatewayPort,
-  type JiraGatewayPort,
-  type ReportConfigPort,
+    CHAT_GATEWAY_PORT,
+    JIRA_GATEWAY_PORT,
+    REPORT_CONFIG_PORT,
+    type ChatGatewayPort,
+    type JiraGatewayPort,
+    type ReportConfigPort,
 } from '../domain/report.ports';
 import type { GoogleChatEvent } from '../domain/report.types';
 import {
-  formatHoursFromSeconds,
-  formatIsoDateToEnglishWithOrdinal,
-  normalizeAuthorName,
+    formatHoursFromSeconds,
+    formatIsoDateToEnglishWithOrdinal,
+    normalizeAuthorName,
 } from '../domain/report.utils';
 import { ReportDate, Timezone } from '../domain/value-objects';
 
@@ -34,13 +34,34 @@ export class ReportRunnerService {
     const cfg = this.configService.getRuntimeConfig();
     const reportDate = ReportDate.from(cfg.reportDate);
     const timezone = Timezone.from(cfg.timezone);
-    const sprintSummaryLine = await this.resolveSprintSummaryLine(cfg);
+    const sprintSnapshot = await this.resolveActiveSprint(cfg);
+    const sprintSummaryLine = this.buildSprintSummaryLine(sprintSnapshot);
     const issues = await this.jiraGateway.fetchIssuesWithWorkLogs(
       cfg.jira,
       cfg.jiraQuery,
       cfg.aggregationDebug.enabled,
     );
+    const anomalyJql = cfg.jiraAnomalyQuery || cfg.jiraQuery;
+    const anomalyIssues = anomalyJql === cfg.jiraQuery
+      ? issues
+      : await this.jiraGateway.fetchIssuesWithWorkLogs(
+        cfg.jira,
+        anomalyJql,
+        cfg.aggregationDebug.enabled,
+      );
     const data = this.aggregationService.aggregateByReportDate(issues, reportDate, timezone);
+    const primaryQueryIssueKeys = new Set(
+      issues
+        .map((issue) => String(issue?.key || '').trim())
+        .filter((key) => key.length > 0),
+    );
+    const anomalies = this.aggregationService.aggregateAnomaliesByReportDate(
+      anomalyIssues,
+      reportDate,
+      timezone,
+      sprintSnapshot?.startDate,
+      primaryQueryIssueKeys,
+    );
 
     this.logAggregationSummary(
       cfg.aggregationDebug.enabled,
@@ -56,6 +77,7 @@ export class ReportRunnerService {
         ...data,
         reportDateTimeLabel: cfg.reportDateTimeLabel,
         reportTitle: cfg.reportTitle,
+        anomalies,
         ...(sprintSummaryLine ? { sprintSummaryLine } : {}),
       },
       cfg.jiraCheckUrl,
@@ -162,37 +184,44 @@ export class ReportRunnerService {
     return filters.includes(normalizeAuthorName(author).toLowerCase());
   }
 
-  private async resolveSprintSummaryLine(cfg: {
+  private async resolveActiveSprint(cfg: {
     jiraBoardId?: number;
     jira: { jiraDomain: string; jiraEmail: string; jiraApiToken: string };
-  }): Promise<string | undefined> {
+  }): Promise<{ name: string; startDate?: string; endDate?: string } | null> {
     if (!cfg.jiraBoardId) {
-      return undefined;
+      return null;
     }
 
     try {
-      const sprint = await this.jiraGateway.fetchActiveSprint(cfg.jira, cfg.jiraBoardId);
-      if (!sprint?.name || !sprint.startDate || !sprint.endDate) {
-        return undefined;
-      }
-
-      const sprintName = this.formatSprintNameForDisplay(sprint.name);
-      if (!sprintName) {
-        return undefined;
-      }
-
-      const start = this.formatSprintDateForDisplay(sprint.startDate);
-      const end = this.formatSprintDateForDisplay(sprint.endDate);
-      if (!start || !end) {
-        return undefined;
-      }
-
-      return `${sprintName} | ${start} to ${end}`;
+      return await this.jiraGateway.fetchActiveSprint(cfg.jira, cfg.jiraBoardId);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.warn(`Skip sprint summary because sprint fetch failed: ${message}`);
+      return null;
+    }
+  }
+
+  private buildSprintSummaryLine(sprint: {
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+  } | null): string | undefined {
+    if (!sprint?.name || !sprint.startDate || !sprint.endDate) {
       return undefined;
     }
+
+    const sprintName = this.formatSprintNameForDisplay(sprint.name);
+    if (!sprintName) {
+      return undefined;
+    }
+
+    const start = this.formatSprintDateForDisplay(sprint.startDate);
+    const end = this.formatSprintDateForDisplay(sprint.endDate);
+    if (!start || !end) {
+      return undefined;
+    }
+
+    return `${sprintName} | ${start} to ${end}`;
   }
 
   private formatSprintNameForDisplay(rawName: string): string {

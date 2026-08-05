@@ -1,20 +1,20 @@
 import {
-  Injectable,
-  Logger,
+    Injectable,
+    Logger,
 } from '@nestjs/common';
 
 import type { ReportConfigPort } from '../domain/report.ports';
 import {
-  type AggregationDebugConfig,
-  type ChatDeliveryConfig,
-  ChatMode,
-  type ReportRuntimeConfig,
+    type AggregationDebugConfig,
+    type ChatDeliveryConfig,
+    ChatMode,
+    type ReportRuntimeConfig,
 } from '../domain/report.types';
 import { getOrdinalSuffix, normalizeAuthorName } from '../domain/report.utils';
 import {
-  ReportDate,
-  TeamName,
-  Timezone,
+    ReportDate,
+    TeamName,
+    Timezone,
 } from '../domain/value-objects';
 
 @Injectable()
@@ -45,6 +45,7 @@ export class ReportConfigService implements ReportConfigPort {
     const teamName = TeamName.from(this.requireEnv('TEAM_NAME'));
     const jiraCheckUrl = this.resolveJiraCheckUrl(jiraDomain, teamName);
     const jiraQuery = this.buildJiraQuery(teamName);
+    const jiraAnomalyQuery = this.buildJiraAnomalyQuery(teamName);
     const reportTitle = this.buildReportTitle(teamName);
     const jiraBoardId = this.resolveJiraBoardId();
     const timezone = this.resolveTimeZone();
@@ -60,6 +61,7 @@ export class ReportConfigService implements ReportConfigPort {
       reportTitle,
       ...(jiraBoardId ? { jiraBoardId } : {}),
       jiraQuery,
+      jiraAnomalyQuery,
       aggregationDebug: this.getAggregationDebugConfig(),
       jiraCheckUrl,
       jira: {
@@ -210,6 +212,15 @@ export class ReportConfigService implements ReportConfigPort {
     }).join(', ');
 
     return `project = ${teamName.value} AND type IN (${issueTypes}) AND worklogDate >= startOfDay(-2d)`;
+  }
+
+  private buildJiraAnomalyQuery(teamName: TeamName): string {
+    const configuredJql = (process.env.JIRA_ANOMALY_JQL_OVERRIDE || '').trim();
+    if (configuredJql) {
+      return configuredJql.replaceAll('{TEAM_NAME}', teamName.value);
+    }
+
+    return `project = ${teamName.value} AND worklogDate >= startOfDay(-2d)`;
   }
 
   private resolveJiraBoardId(): number | undefined {

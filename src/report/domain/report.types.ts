@@ -1,7 +1,29 @@
 
 export interface IssueFields {
   summary?: string;
+  created?: string;
+  parent?: {
+    key?: string;
+  };
+  subtasks?: Array<{
+    key?: string;
+  }>;
+  issuetype?: {
+    name?: string;
+    subtask?: boolean;
+  };
+  sprint?: JiraSprintInfo | JiraSprintInfo[];
+  closedSprints?: JiraSprintInfo[];
+  [key: string]: unknown;
   worklog?: WorklogResponse;
+}
+
+export interface JiraSprintInfo {
+  id?: number | string;
+  name?: string;
+  state?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export interface WorklogAuthor {
@@ -54,6 +76,7 @@ export interface ReportRuntimeConfig {
   reportTitle: string;
   jiraBoardId?: number;
   jiraQuery: string;
+  jiraAnomalyQuery: string;
   aggregationDebug: AggregationDebugConfig;
   jiraCheckUrl: string;
   jira: JiraConfig;
@@ -91,6 +114,27 @@ export interface AggregatedUser {
 export interface AggregatedData {
   users: Record<string, AggregatedUser>;
   reportDate: string;
+}
+
+export interface ViolationIssueAggregate {
+  issueKey: string;
+  totalSeconds: number;
+}
+
+export interface ViolationUserAggregate {
+  totalSeconds: number;
+  issues: ViolationIssueAggregate[];
+}
+
+export interface ViolationAggregate {
+  users: Record<string, ViolationUserAggregate>;
+}
+
+export interface AggregationAnomalies {
+  beforeIssueCreated?: ViolationAggregate;
+  beforeSprintStart: ViolationAggregate;
+  onParentIssue: ViolationAggregate;
+  invalidTotalSecondsByUser?: Record<string, number>;
 }
 
 export interface GoogleChatEvent {
