@@ -133,6 +133,7 @@ export interface ViolationAggregate {
 export interface AggregationAnomalies {
   beforeIssueCreated?: ViolationAggregate;
   beforeSprintStart: ViolationAggregate;
+  onChildTicketWithoutSprint?: ViolationAggregate;
   onParentIssue: ViolationAggregate;
   invalidTotalSecondsByUser?: Record<string, number>;
 }

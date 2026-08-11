@@ -175,6 +175,26 @@ Behavior notes:
 - CRON_SECRET should be non-empty in production.
 - JIRA_BOARD_ID enables sprint summary in report header (shown only when Jira returns active sprint with name, start date, and end date).
 
+Report header format notes:
+
+- When the input title uses the marker style `-+- ... -+-`, chat output keeps marker style and normalizes the legacy `WORK LOG` phrase into `WORKLOG`.
+- Canonical header title example: `-+-[ BKM4 WORKLOG REPORT ]-+-`.
+- The timestamp line is rendered as `Generated at: <label>`.
+- Day values in month/day labels are normalized with ordinal suffixes (`st`, `nd`, `rd`, `th`), for example `May 9` -> `May 9th`.
+
+Report table/section contract:
+
+- Section `1. Valid Work Log Time` is always rendered.
+- Summary table columns remain `Author` and `Total` (no `Invalid` column).
+- Violation sections are rendered only when data exists for that violation category.
+- Violation section order is:
+  - `Logs Before Ticket Creation`
+  - `Logs On Parent Tickets`
+  - `Logs On Child Tickets Without Sprint`
+  - `Logs Before Sprint Start`
+- Violation table rows display compact ticket IDs in `xh (1234)` format.
+- Violation tables use minimal border style (no left/right outer `|` frame).
+
 Sprint summary line example:
 
 ```text

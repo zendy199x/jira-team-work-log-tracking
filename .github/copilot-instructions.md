@@ -38,6 +38,17 @@ These instructions apply to the full repository. For file-specific rules under `
 - Respect Vercel API forwarding behavior:
   - `/api/*` is mapped to Nest routes via `api/_handler.ts`
   - `/api/cron` is a dedicated cron handler
+- Keep report header text contract stable unless explicitly requested:
+  - marker-style title is preserved as `-+-[ <TEAM_NAME> WORKLOG REPORT ]-+-`
+  - timestamp label uses `Generated at: ...`
+  - month/day labels are normalized to ordinal suffixes (`st`/`nd`/`rd`/`th`)
+- Keep report table contract stable unless explicitly requested:
+  - section `1. Valid Work Log Time` always exists
+  - summary table keeps `Author` and `Total` columns
+  - violation sections render only when category has data
+  - violation section order: before ticket creation, parent tickets, child tickets without sprint, before sprint start
+  - violation ticket text uses compact key format like `1h (1234)`
+  - violation tables use border-minimal side-open style
 
 ## Documentation Requirements
 

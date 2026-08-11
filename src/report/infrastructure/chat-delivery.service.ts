@@ -161,19 +161,28 @@ export class ChatDeliveryService implements ChatGatewayPort {
       sectionIndex += 1;
     }
 
-    const hasBeforeSprintStart = this.appendViolationTable(
+    const hasParentIssue = this.appendViolationTable(
       lines,
-      `${sectionIndex}. Logs Before Sprint Start`,
-      anomalies.beforeSprintStart,
+      `${sectionIndex}. Logs On Parent Tickets`,
+      anomalies.onParentIssue,
     );
-    if (hasBeforeSprintStart) {
+    if (hasParentIssue) {
+      sectionIndex += 1;
+    }
+
+    const hasChildTicketWithoutSprint = this.appendViolationTable(
+      lines,
+      `${sectionIndex}. Logs On Child Tickets Without Sprint`,
+      anomalies.onChildTicketWithoutSprint || { users: {} },
+    );
+    if (hasChildTicketWithoutSprint) {
       sectionIndex += 1;
     }
 
     this.appendViolationTable(
       lines,
-      `${sectionIndex}. Logs On Parent Tickets`,
-      anomalies.onParentIssue,
+      `${sectionIndex}. Logs Before Sprint Start`,
+      anomalies.beforeSprintStart,
     );
   }
 
@@ -206,8 +215,8 @@ export class ChatDeliveryService implements ChatGatewayPort {
       detailHeader.length,
       ...cappedRows.flatMap((row) => row.detailLines.map((line) => line.length)),
     );
-    const border = `+${'-'.repeat(authorWidth + 2)}+${'-'.repeat(detailWidth + 2)}+`;
-    const header = `| ${authorHeader.padEnd(authorWidth)} | ${detailHeader.padEnd(detailWidth)} |`;
+    const border = `${'-'.repeat(authorWidth + 2)}+${'-'.repeat(detailWidth + 2)}`;
+    const header = ` ${authorHeader.padEnd(authorWidth)} | ${detailHeader.padEnd(detailWidth)} `;
 
     lines.push('');
     lines.push(title);
@@ -218,10 +227,10 @@ export class ChatDeliveryService implements ChatGatewayPort {
     for (const [index, row] of cappedRows.entries()) {
       const authorText = `${index + 1}. ${row.name}`;
       const [firstDetailLine, ...restDetailLines] = row.detailLines;
-      lines.push(`| ${authorText.padEnd(authorWidth)} | ${String(firstDetailLine || '').padEnd(detailWidth)} |`);
+      lines.push(` ${authorText.padEnd(authorWidth)} | ${String(firstDetailLine || '').padEnd(detailWidth)} `);
 
       for (const detailLine of restDetailLines) {
-        lines.push(`| ${''.padEnd(authorWidth)} | ${detailLine.padEnd(detailWidth)} |`);
+        lines.push(` ${''.padEnd(authorWidth)} | ${detailLine.padEnd(detailWidth)} `);
       }
     }
 
@@ -246,8 +255,47 @@ export class ChatDeliveryService implements ChatGatewayPort {
   }): string {
     const normalizedTitle = this.formatReportTitleForDisplay(data.reportTitle);
     const sprintLine = data.sprintSummaryLine || '';
+    const checkedAtLabel = this.withOrdinalDay(data.reportDateTimeLabel);
     const headerLines = [normalizedTitle, sprintLine].filter(Boolean);
-    return `${headerLines.join('\n')}\n\nChecked at: ${data.reportDateTimeLabel}`;
+    return `${headerLines.join('\n')}\n\nGenerated at: ${checkedAtLabel}`;
+  }
+
+  private withOrdinalDay(rawLabel: string): string {
+    const label = String(rawLabel || '').trim();
+    if (!label) {
+      return label;
+    }
+
+    return label.replace(
+      /\b([A-Za-z]{3,9})\s(\d{1,2})(?!st\b|nd\b|rd\b|th\b)(?=\b|,)/,
+      (_full, month: string, dayText: string) => {
+        const day = Number(dayText);
+        if (!Number.isInteger(day)) {
+          return `${month} ${dayText}`;
+        }
+
+        return `${month} ${day}${this.getOrdinalSuffix(day)}`;
+      },
+    );
+  }
+
+  private getOrdinalSuffix(day: number): string {
+    if (day >= 11 && day <= 13) {
+      return 'th';
+    }
+
+    const lastDigit = day % 10;
+    if (lastDigit === 1) {
+      return 'st';
+    }
+    if (lastDigit === 2) {
+      return 'nd';
+    }
+    if (lastDigit === 3) {
+      return 'rd';
+    }
+
+    return 'th';
   }
 
   private formatReportTitleForDisplay(reportTitle: string): string {
@@ -261,7 +309,13 @@ export class ChatDeliveryService implements ChatGatewayPort {
       return rawTitle;
     }
 
-    return `-+-[${titleBody}]-+-`;
+    const normalizedBody = titleBody.replace(/^\[(.*)\]$/, '$1').trim();
+    if (!normalizedBody) {
+      return rawTitle;
+    }
+
+    const worklogStyleBody = normalizedBody.replace(/\bWORK\s+LOG\b/gi, 'WORKLOG');
+    return `-+-[ ${worklogStyleBody} ]-+-`;
   }
 
   private buildRetryButtons(chat: ChatDeliveryConfig): Array<Record<string, unknown>> {

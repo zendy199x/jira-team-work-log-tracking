@@ -249,6 +249,12 @@ describe('ReportAggregationService', () => {
         key: 'BKM4-1111',
         fields: {
           issuetype: { name: 'Sub-task', subtask: true },
+          sprint: {
+            id: 11,
+            name: 'Sprint 11',
+            state: 'future',
+            startDate: '2026-05-09T12:00:00.000Z',
+          },
           worklog: {
             worklogs: [
               {
@@ -290,6 +296,12 @@ describe('ReportAggregationService', () => {
         fields: {
           created: '2026-05-09T09:00:00.000Z',
           issuetype: { name: 'Sub-task', subtask: true },
+          sprint: {
+            id: 10,
+            name: 'Sprint 10',
+            state: 'active',
+            startDate: '2026-05-09T07:00:00.000Z',
+          },
           worklog: {
             worklogs: [
               {
@@ -438,6 +450,39 @@ describe('ReportAggregationService', () => {
     expect(result.invalidTotalSecondsByUser?.Alice).toBe(2400);
   });
 
+  it('flags sub-task logs when ticket is not assigned to any sprint', () => {
+    const issues = [
+      {
+        key: 'BKM4-9100',
+        fields: {
+          issuetype: { name: 'Sub-task', subtask: true },
+          worklog: {
+            worklogs: [
+              {
+                id: 'wNoSprint',
+                author: { displayName: 'Zendy' },
+                timeSpentSeconds: 1800,
+                started: '2026-05-09T08:00:00.000Z',
+              },
+            ],
+          },
+        },
+      },
+    ];
+
+    const result = service.aggregateAnomaliesByReportDate(
+      issues,
+      ReportDate.from('2026-05-09'),
+      Timezone.from('UTC'),
+      undefined,
+    );
+
+    expect(result.onChildTicketWithoutSprint?.users.Zendy.issues).toEqual([
+      { issueKey: 'BKM4-9100', totalSeconds: 1800 },
+    ]);
+    expect(result.invalidTotalSecondsByUser?.Zendy).toBe(1800);
+  });
+
   it('flags Epic and Story logs when team policy requires Subtask logging', () => {
     const issues = [
       {
@@ -502,7 +547,10 @@ describe('ReportAggregationService', () => {
       { issueKey: 'BKM4-8101', totalSeconds: 5400 },
       { issueKey: 'BKM4-8100', totalSeconds: 1800 },
     ]);
-    expect(result.invalidTotalSecondsByUser?.Zendy).toBe(7200);
+    expect(result.onChildTicketWithoutSprint?.users.Zendy.issues).toEqual([
+      { issueKey: 'BKM4-8102', totalSeconds: 3600 },
+    ]);
+    expect(result.invalidTotalSecondsByUser?.Zendy).toBe(10800);
   });
 
   it('does not flag ticket that belongs to previous closed sprint after sprint rollover', () => {
@@ -583,7 +631,7 @@ describe('ReportAggregationService', () => {
     expect(result.invalidTotalSecondsByUser?.Zendy).toBe(7200);
   });
 
-  it('keeps invalid total equal to sum of both violation categories for the same worklog', () => {
+  it('assigns only highest-priority violation when a worklog matches multiple rules', () => {
     const issues = [
       {
         key: 'BKM4-7000',
@@ -617,8 +665,8 @@ describe('ReportAggregationService', () => {
       undefined,
     );
 
-    expect(result.beforeSprintStart.users.Zendy.totalSeconds).toBe(3600);
+    expect(result.beforeSprintStart.users.Zendy).toBeUndefined();
     expect(result.onParentIssue.users.Zendy.totalSeconds).toBe(3600);
-    expect(result.invalidTotalSecondsByUser?.Zendy).toBe(7200);
+    expect(result.invalidTotalSecondsByUser?.Zendy).toBe(3600);
   });
 });

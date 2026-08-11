@@ -18,6 +18,7 @@ applyTo: "src/report/**, src/health.controller.ts, README.md, .env.example"
 - Avoid hardcoded team names in runtime logic.
 - Use `TEAM_NAME` as the source for report title and Jira project key context.
 - When generating a slug, derive lowercase kebab-case from `TEAM_NAME`.
+- For marker-based report titles, keep canonical output format as `-+-[ <TEAM_NAME> WORKLOG REPORT ]-+-`.
 
 ## Environment Configuration
 
@@ -34,6 +35,15 @@ applyTo: "src/report/**, src/health.controller.ts, README.md, .env.example"
   - `POST /reports/chat/events`
 - Keep token authorization behavior driven by `CRON_SECRET`.
 - Local may allow empty `CRON_SECRET`; production should require it.
+- Keep report timestamp label format as `Generated at: ...`.
+- Keep month/day labels in report headers ordinalized (`st`, `nd`, `rd`, `th`) when applicable.
+- Keep report section/table contract stable unless requested otherwise:
+  - section `1. Valid Work Log Time` always appears
+  - summary table columns remain `Author` + `Total`
+  - violation sections render only when category has data
+  - violation section order: before ticket creation -> parent tickets -> child tickets without sprint -> before sprint start
+  - violation ticket display remains compact (`xh (1234)`)
+  - violation table style remains border-minimal without outer side frame
 
 ## Documentation Rules
 

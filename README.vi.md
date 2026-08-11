@@ -175,6 +175,26 @@ Ghi chú hành vi:
 - CRON_SECRET nên luôn có giá trị ở môi trường production.
 - JIRA_BOARD_ID bật hiển thị dòng sprint trong header report (chỉ hiện khi Jira trả về active sprint có đủ tên, ngày bắt đầu và ngày kết thúc).
 
+Ghi chú định dạng header report:
+
+- Khi title đầu vào dùng marker `-+- ... -+-`, output chat giữ nguyên marker style và chuẩn hóa cụm cũ `WORK LOG` thành `WORKLOG`.
+- Ví dụ title chuẩn: `-+-[ BKM4 WORKLOG REPORT ]-+-`.
+- Dòng thời gian hiển thị theo dạng `Generated at: <label>`.
+- Giá trị ngày trong label tháng/ngày được chuẩn hóa thêm hậu tố thứ tự (`st`, `nd`, `rd`, `th`), ví dụ `May 9` -> `May 9th`.
+
+Contract cho các bảng/section trong report:
+
+- Section `1. Valid Work Log Time` luôn được render.
+- Bảng summary giữ các cột `Author` và `Total` (không có cột `Invalid`).
+- Các section vi phạm chỉ render khi category đó có dữ liệu.
+- Thứ tự section vi phạm là:
+  - `Logs Before Ticket Creation`
+  - `Logs On Parent Tickets`
+  - `Logs On Child Tickets Without Sprint`
+  - `Logs Before Sprint Start`
+- Dòng ticket trong bảng vi phạm dùng ticket ID rút gọn theo format `xh (1234)`.
+- Bảng vi phạm dùng border tối giản (không có khung ngoài `|` bên trái/phải).
+
 Ví dụ dòng sprint:
 
 ```text

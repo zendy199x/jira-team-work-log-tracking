@@ -37,7 +37,7 @@ describe('ChatDeliveryService', () => {
         users: { Alice: { logs: { '2026-05-09': 3600 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       },
       'https://jira/check',
     );
@@ -46,8 +46,8 @@ describe('ChatDeliveryService', () => {
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(payload.cardsV2).toBeDefined();
     expect(payload.text).toBeDefined();
-    expect(JSON.stringify(payload)).toContain('-+-[BKM4 WORK LOG REPORT]-+-');
-    expect(JSON.stringify(payload)).toContain('Checked at: May 9');
+    expect(JSON.stringify(payload)).toContain('-+-[ BKM4 WORKLOG REPORT ]-+-');
+    expect(JSON.stringify(payload)).toContain('Generated at: May 9th');
     expect(JSON.stringify(payload)).toContain('```');
   });
 
@@ -61,7 +61,7 @@ describe('ChatDeliveryService', () => {
         users: {},
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       },
       'https://jira/check',
     );
@@ -81,7 +81,7 @@ describe('ChatDeliveryService', () => {
         users: { Alice: { logs: { '2026-05-09': 3600 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
         sprintSummaryLine: 'Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026',
       },
       'https://jira/check',
@@ -90,7 +90,7 @@ describe('ChatDeliveryService', () => {
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     const text = String(payload.text || '');
     expect(text).toContain('Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026');
-    expect(text).toContain('-+-[BKM4 WORK LOG REPORT]-+-\nSprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nChecked at: May 9');
+    expect(text).toContain('-+-[ BKM4 WORKLOG REPORT ]-+-\nSprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nGenerated at: May 9th');
   });
 
   it('renders anomaly tables with only violating users and issue breakdown', () => {
@@ -103,7 +103,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       anomalies: {
         beforeIssueCreated: {
           users: {},
@@ -123,6 +123,7 @@ describe('ChatDeliveryService', () => {
             },
           },
         },
+        onChildTicketWithoutSprint: { users: {} },
         onParentIssue: {
           users: {
             Zendy: {
@@ -141,10 +142,10 @@ describe('ChatDeliveryService', () => {
     expect(output).not.toContain('| Invalid |');
     expect(output).toContain('3.5h');
     expect(output).toContain('1. Valid Work Log Time');
-    expect(output).toContain('2. Logs Before Sprint Start');
-    expect(output).toContain('| 1. Zendy | 2h (1111)');
-    expect(output).toContain('|          | 1h (1234)');
-    expect(output).toContain('3. Logs On Parent Tickets');
+    expect(output).toContain('2. Logs On Parent Tickets');
+    expect(output).toContain(' 1. Zendy | 2h (1111) ');
+    expect(output).toContain('          | 1h (1234) ');
+    expect(output).toContain('3. Logs Before Sprint Start');
     expect(output).toContain('0.5h (2000)');
     expect(output).not.toContain('BKM4-9999');
   });
@@ -157,10 +158,11 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: { users: {} },
+        onChildTicketWithoutSprint: { users: {} },
         onParentIssue: { users: {} },
         invalidTotalSecondsByUser: {},
       },
@@ -177,7 +179,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: {
@@ -188,6 +190,7 @@ describe('ChatDeliveryService', () => {
             },
           },
         },
+        onChildTicketWithoutSprint: { users: {} },
         onParentIssue: { users: {} },
         invalidTotalSecondsByUser: {
           Zendy: 4800,
@@ -209,7 +212,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: {
@@ -220,6 +223,7 @@ describe('ChatDeliveryService', () => {
             },
           },
         },
+        onChildTicketWithoutSprint: { users: {} },
         onParentIssue: {
           users: {
             Zendy: {
@@ -246,7 +250,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       anomalies: {
         beforeIssueCreated: {
           users: {
@@ -257,12 +261,41 @@ describe('ChatDeliveryService', () => {
           },
         },
         beforeSprintStart: { users: {} },
+        onChildTicketWithoutSprint: { users: {} },
         onParentIssue: { users: {} },
       },
     });
 
     expect(output).toContain('2. Logs Before Ticket Creation');
     expect(output).toContain('0.5h (1100)');
+  });
+
+  it('renders a separate table for child tickets without sprint', () => {
+    const service = new ChatDeliveryService();
+    const output = service['buildChatTextReport']({
+      users: {
+        Zendy: { logs: { '2026-05-09': 5400 } },
+      },
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      anomalies: {
+        beforeIssueCreated: { users: {} },
+        beforeSprintStart: { users: {} },
+        onChildTicketWithoutSprint: {
+          users: {
+            Zendy: {
+              totalSeconds: 1800,
+              issues: [{ issueKey: 'BKM4-9100', totalSeconds: 1800 }],
+            },
+          },
+        },
+        onParentIssue: { users: {} },
+      },
+    });
+
+    expect(output).toContain('2. Logs On Child Tickets Without Sprint');
+    expect(output).toContain('0.5h (9100)');
   });
 
   it('sends app-mode message with bearer token', async () => {
@@ -280,7 +313,7 @@ describe('ChatDeliveryService', () => {
         users: { Bob: { logs: { '2026-05-09': 1200 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       },
       'https://jira/check',
     );
@@ -306,7 +339,7 @@ describe('ChatDeliveryService', () => {
         users: { Bob: { logs: { '2026-05-09': 1200 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
       },
       'https://jira/check',
     );
@@ -327,7 +360,7 @@ describe('ChatDeliveryService', () => {
           users: {},
           reportDate: '2026-05-09',
           reportDateTimeLabel: 'May 9',
-          reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+          reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
         },
         'https://jira/check',
       ),
@@ -345,7 +378,7 @@ describe('ChatDeliveryService', () => {
           users: { Alice: { logs: { '2026-05-09': 600 } } },
           reportDate: '2026-05-09',
           reportDateTimeLabel: 'May 9',
-          reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+          reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
         },
         'https://jira/check',
       ),
@@ -369,7 +402,7 @@ describe('ChatDeliveryService', () => {
           users: { Bob: { logs: { '2026-05-09': 1200 } } },
           reportDate: '2026-05-09',
           reportDateTimeLabel: 'May 9',
-          reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+          reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
         },
         'https://jira/check',
       ),
@@ -387,7 +420,7 @@ describe('ChatDeliveryService', () => {
       users,
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
     });
 
     expect(output).toContain('Total');
@@ -406,7 +439,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-BKM4 WORK LOG REPORT-+-',
+      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
     });
 
     expect(output).toContain('Bob');
@@ -423,7 +456,7 @@ describe('ChatDeliveryService', () => {
     });
 
     expect(output).toContain('BKM4 WORK LOG REPORT');
-    expect(output).not.toContain('-+-[BKM4 WORK LOG REPORT]-+-');
+    expect(output).not.toContain('-+-[ BKM4 WORKLOG REPORT ]-+-');
   });
 
   it('keeps raw report title when wrapped marker has empty body', () => {
@@ -447,7 +480,7 @@ describe('ChatDeliveryService', () => {
       reportTitle: undefined as unknown as string,
     });
 
-    expect(output).toContain('Checked at: May 9');
+    expect(output).toContain('Generated at: May 9th');
   });
 
   it('returns cached token without re-authorizing when cache is still valid', async () => {

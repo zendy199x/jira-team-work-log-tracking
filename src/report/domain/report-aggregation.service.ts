@@ -63,6 +63,7 @@ export class ReportAggregationService {
   ): AggregationAnomalies {
     const beforeIssueCreatedAccumulator = new Map<string, Map<string, number>>();
     const beforeSprintStartAccumulator = new Map<string, Map<string, number>>();
+    const childTicketWithoutSprintAccumulator = new Map<string, Map<string, number>>();
     const parentIssueAccumulator = new Map<string, Map<string, number>>();
     const invalidTotalSecondsByUser = new Map<string, number>();
     const fallbackSprintStartTimeMs = this.parseSafeTime(fallbackSprintStartDate);
@@ -77,7 +78,9 @@ export class ReportAggregationService {
       const issueCreatedTimeMs = this.parseSafeTime(issue?.fields?.created);
       const isOutsidePrimaryQuery =
         primaryQueryIssueKeys instanceof Set && !primaryQueryIssueKeys.has(issueKey);
-      const isNonSubtaskIssue = !this.isSubtaskIssue(issue);
+      const isSubtask = this.isSubtaskIssue(issue);
+      const isNonSubtaskIssue = !isSubtask;
+      const hasAssignedSprint = this.extractIssueSprints(issue).length > 0;
       const issueSprintStartTimeMs = this.resolveIssueSprintStartTimeMs(issue);
 
       for (const worklog of logs) {
@@ -100,28 +103,42 @@ export class ReportAggregationService {
 
         const isBeforeIssueCreatedViolation =
           issueCreatedTimeMs !== undefined && startedTimeMs < issueCreatedTimeMs;
+        const sprintStartTimeMs = issueSprintStartTimeMs ?? fallbackSprintStartTimeMs;
+        const isBeforeSprintStartViolation =
+          sprintStartTimeMs !== undefined && startedTimeMs < sprintStartTimeMs;
+        const isChildTicketWithoutSprintViolation = isSubtask && !hasAssignedSprint;
+        const isParentIssueViolation = isNonSubtaskIssue || isOutsidePrimaryQuery;
+
+        // Priority order: before ticket creation -> parent ticket -> child ticket without sprint -> before sprint start.
         if (isBeforeIssueCreatedViolation) {
           this.addViolation(beforeIssueCreatedAccumulator, name, issueKey, seconds);
           invalidTotalSecondsByUser.set(
             name,
             (invalidTotalSecondsByUser.get(name) || 0) + seconds,
           );
+          continue;
         }
 
-        const sprintStartTimeMs = issueSprintStartTimeMs ?? fallbackSprintStartTimeMs;
-        const isBeforeSprintStartViolation =
-          sprintStartTimeMs !== undefined && startedTimeMs < sprintStartTimeMs;
-        if (isBeforeSprintStartViolation) {
-          this.addViolation(beforeSprintStartAccumulator, name, issueKey, seconds);
+        if (isParentIssueViolation) {
+          this.addViolation(parentIssueAccumulator, name, issueKey, seconds);
           invalidTotalSecondsByUser.set(
             name,
             (invalidTotalSecondsByUser.get(name) || 0) + seconds,
           );
+          continue;
         }
 
-        const isParentIssueViolation = isNonSubtaskIssue || isOutsidePrimaryQuery;
-        if (isParentIssueViolation) {
-          this.addViolation(parentIssueAccumulator, name, issueKey, seconds);
+        if (isChildTicketWithoutSprintViolation) {
+          this.addViolation(childTicketWithoutSprintAccumulator, name, issueKey, seconds);
+          invalidTotalSecondsByUser.set(
+            name,
+            (invalidTotalSecondsByUser.get(name) || 0) + seconds,
+          );
+          continue;
+        }
+
+        if (isBeforeSprintStartViolation) {
+          this.addViolation(beforeSprintStartAccumulator, name, issueKey, seconds);
           invalidTotalSecondsByUser.set(
             name,
             (invalidTotalSecondsByUser.get(name) || 0) + seconds,
@@ -133,6 +150,7 @@ export class ReportAggregationService {
     return {
       beforeIssueCreated: this.toViolationAggregate(beforeIssueCreatedAccumulator),
       beforeSprintStart: this.toViolationAggregate(beforeSprintStartAccumulator),
+      onChildTicketWithoutSprint: this.toViolationAggregate(childTicketWithoutSprintAccumulator),
       onParentIssue: this.toViolationAggregate(parentIssueAccumulator),
       invalidTotalSecondsByUser: Object.fromEntries(invalidTotalSecondsByUser.entries()),
     };
@@ -229,7 +247,7 @@ export class ReportAggregationService {
       'state' in candidate ||
       'startDate' in candidate ||
       'endDate' in candidate ||
-      'name' in candidate;
+      'id' in candidate;
 
     if (!hasSprintSignals) {
       return false;
