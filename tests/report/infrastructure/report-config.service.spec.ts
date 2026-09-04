@@ -51,6 +51,15 @@ describe('ReportConfigService', () => {
     expect(config.chat.reportUrl).toContain('token=secret');
   });
 
+  it('includes bug with parent in default jira query', () => {
+    setBaseEnv();
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    expect(config.jiraQuery).toContain('(type = Bug AND parent is not EMPTY)');
+  });
+
   it('supports app mode', () => {
     setBaseEnv();
     process.env.GOOGLE_CHAT_MODE = 'app';

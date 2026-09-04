@@ -206,7 +206,7 @@ Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026
 By default, the service uses this JQL template:
 
 ```text
-project = {TEAM_NAME} AND type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") AND worklogDate >= startOfDay(-2d)
+project = {TEAM_NAME} AND (type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") OR (type = Bug AND parent is not EMPTY)) AND worklogDate >= startOfDay(-2d)
 ```
 
 `{TEAM_NAME}` is resolved from `TEAM_NAME` at runtime.

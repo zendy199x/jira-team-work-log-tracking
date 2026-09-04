@@ -206,7 +206,7 @@ Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026
 Mặc định hệ thống dùng JQL template sau:
 
 ```text
-project = {TEAM_NAME} AND type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") AND worklogDate >= startOfDay(-2d)
+project = {TEAM_NAME} AND (type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") OR (type = Bug AND parent is not EMPTY)) AND worklogDate >= startOfDay(-2d)
 ```
 
 `{TEAM_NAME}` được thay từ `TEAM_NAME` lúc runtime.

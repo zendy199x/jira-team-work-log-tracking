@@ -211,7 +211,7 @@ export class ReportConfigService implements ReportConfigPort {
       return issueType;
     }).join(', ');
 
-    return `project = ${teamName.value} AND type IN (${issueTypes}) AND worklogDate >= startOfDay(-2d)`;
+    return `project = ${teamName.value} AND (type IN (${issueTypes}) OR (type = Bug AND parent is not EMPTY)) AND worklogDate >= startOfDay(-2d)`;
   }
 
   private buildJiraAnomalyQuery(teamName: TeamName): string {

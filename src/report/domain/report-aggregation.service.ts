@@ -80,6 +80,7 @@ export class ReportAggregationService {
         primaryQueryIssueKeys instanceof Set && !primaryQueryIssueKeys.has(issueKey);
       const isSubtask = this.isSubtaskIssue(issue);
       const isNonSubtaskIssue = !isSubtask;
+      const isBugWithParentAllowed = this.isBugIssue(issue) && this.hasParentIssue(issue);
       const hasAssignedSprint = this.extractIssueSprints(issue).length > 0;
       const issueSprintStartTimeMs = this.resolveIssueSprintStartTimeMs(issue);
 
@@ -107,7 +108,8 @@ export class ReportAggregationService {
         const isBeforeSprintStartViolation =
           sprintStartTimeMs !== undefined && startedTimeMs < sprintStartTimeMs;
         const isChildTicketWithoutSprintViolation = isSubtask && !hasAssignedSprint;
-        const isParentIssueViolation = isNonSubtaskIssue || isOutsidePrimaryQuery;
+        const isParentIssueViolation =
+          (isNonSubtaskIssue || isOutsidePrimaryQuery) && !isBugWithParentAllowed;
 
         // Priority order: before ticket creation -> parent ticket -> child ticket without sprint -> before sprint start.
         if (isBeforeIssueCreatedViolation) {
@@ -300,6 +302,16 @@ export class ReportAggregationService {
     }
 
     return issueTypeName.startsWith('sub');
+  }
+
+  private isBugIssue(issue: Issue): boolean {
+    const issueTypeName = String(issue?.fields?.issuetype?.name || '').trim().toLowerCase();
+    return issueTypeName === 'bug';
+  }
+
+  private hasParentIssue(issue: Issue): boolean {
+    const parentKey = String(issue?.fields?.parent?.key || '').trim();
+    return parentKey.length > 0;
   }
 
   private addViolation(
