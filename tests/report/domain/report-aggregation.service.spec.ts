@@ -335,7 +335,7 @@ describe('ReportAggregationService', () => {
     expect(result.invalidTotalSecondsByUser?.Zendy).toBe(1800);
   });
 
-  it('flags non-subtask issue logs as parent-ticket violations except bug with parent', () => {
+  it('flags non-subtask issue logs as parent-ticket violations', () => {
     const issues = [
       {
         key: 'BKM4-2000',
@@ -393,23 +393,6 @@ describe('ReportAggregationService', () => {
           },
         },
       },
-      {
-        key: 'BKM4-5000',
-        fields: {
-          issuetype: { name: 'Bug', subtask: false },
-          parent: { key: 'BKM4-4999' },
-          worklog: {
-            worklogs: [
-              {
-                id: 'w6',
-                author: { displayName: 'Delta' },
-                timeSpentSeconds: 1200,
-                started: '2026-05-09T11:30:00.000Z',
-              },
-            ],
-          },
-        },
-      },
     ];
 
     const result = service.aggregateAnomaliesByReportDate(
@@ -428,14 +411,12 @@ describe('ReportAggregationService', () => {
     expect(result.onParentIssue.users.Charlie.issues).toEqual([
       { issueKey: 'BKM4-4000', totalSeconds: 3600 },
     ]);
-    expect(result.onParentIssue.users.Delta).toBeUndefined();
     expect(result.invalidTotalSecondsByUser?.Alice).toBe(1800);
     expect(result.invalidTotalSecondsByUser?.Bob).toBe(3600);
     expect(result.invalidTotalSecondsByUser?.Charlie).toBe(3600);
-    expect(result.invalidTotalSecondsByUser?.Delta).toBeUndefined();
   });
 
-  it('does not flag bug issue with parent even when outside primary query', () => {
+  it('flags outside-primary issue with parent as unvalidated issue type violation', () => {
     const issues = [
       {
         key: 'BKM4-BUG-PARENT',
@@ -464,8 +445,11 @@ describe('ReportAggregationService', () => {
       new Set(['BKM4-IN-SUMMARY']),
     );
 
+    expect(result.onUnvalidatedIssueType?.users.Alice.issues).toEqual([
+      { issueKey: 'BKM4-BUG-PARENT', totalSeconds: 2400 },
+    ]);
     expect(result.onParentIssue.users.Alice).toBeUndefined();
-    expect(result.invalidTotalSecondsByUser?.Alice).toBeUndefined();
+    expect(result.invalidTotalSecondsByUser?.Alice).toBe(2400);
   });
 
   it('flags issue logs outside primary query as parent-ticket violations', () => {

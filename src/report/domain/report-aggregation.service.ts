@@ -63,6 +63,7 @@ export class ReportAggregationService {
   ): AggregationAnomalies {
     const beforeIssueCreatedAccumulator = new Map<string, Map<string, number>>();
     const beforeSprintStartAccumulator = new Map<string, Map<string, number>>();
+    const unvalidatedIssueTypeAccumulator = new Map<string, Map<string, number>>();
     const childTicketWithoutSprintAccumulator = new Map<string, Map<string, number>>();
     const parentIssueAccumulator = new Map<string, Map<string, number>>();
     const invalidTotalSecondsByUser = new Map<string, number>();
@@ -80,7 +81,7 @@ export class ReportAggregationService {
         primaryQueryIssueKeys instanceof Set && !primaryQueryIssueKeys.has(issueKey);
       const isSubtask = this.isSubtaskIssue(issue);
       const isNonSubtaskIssue = !isSubtask;
-      const isBugWithParentAllowed = this.isBugIssue(issue) && this.hasParentIssue(issue);
+      const hasParentIssue = this.hasParentIssue(issue);
       const hasAssignedSprint = this.extractIssueSprints(issue).length > 0;
       const issueSprintStartTimeMs = this.resolveIssueSprintStartTimeMs(issue);
 
@@ -108,12 +109,21 @@ export class ReportAggregationService {
         const isBeforeSprintStartViolation =
           sprintStartTimeMs !== undefined && startedTimeMs < sprintStartTimeMs;
         const isChildTicketWithoutSprintViolation = isSubtask && !hasAssignedSprint;
-        const isParentIssueViolation =
-          (isNonSubtaskIssue || isOutsidePrimaryQuery) && !isBugWithParentAllowed;
+        const isUnvalidatedIssueTypeViolation = isOutsidePrimaryQuery && hasParentIssue;
+        const isParentIssueViolation = isNonSubtaskIssue || isOutsidePrimaryQuery;
 
         // Priority order: before ticket creation -> parent ticket -> child ticket without sprint -> before sprint start.
         if (isBeforeIssueCreatedViolation) {
           this.addViolation(beforeIssueCreatedAccumulator, name, issueKey, seconds);
+          invalidTotalSecondsByUser.set(
+            name,
+            (invalidTotalSecondsByUser.get(name) || 0) + seconds,
+          );
+          continue;
+        }
+
+        if (isUnvalidatedIssueTypeViolation) {
+          this.addViolation(unvalidatedIssueTypeAccumulator, name, issueKey, seconds);
           invalidTotalSecondsByUser.set(
             name,
             (invalidTotalSecondsByUser.get(name) || 0) + seconds,
@@ -152,6 +162,7 @@ export class ReportAggregationService {
     return {
       beforeIssueCreated: this.toViolationAggregate(beforeIssueCreatedAccumulator),
       beforeSprintStart: this.toViolationAggregate(beforeSprintStartAccumulator),
+      onUnvalidatedIssueType: this.toViolationAggregate(unvalidatedIssueTypeAccumulator),
       onChildTicketWithoutSprint: this.toViolationAggregate(childTicketWithoutSprintAccumulator),
       onParentIssue: this.toViolationAggregate(parentIssueAccumulator),
       invalidTotalSecondsByUser: Object.fromEntries(invalidTotalSecondsByUser.entries()),
@@ -302,11 +313,6 @@ export class ReportAggregationService {
     }
 
     return issueTypeName.startsWith('sub');
-  }
-
-  private isBugIssue(issue: Issue): boolean {
-    const issueTypeName = String(issue?.fields?.issuetype?.name || '').trim().toLowerCase();
-    return issueTypeName === 'bug';
   }
 
   private hasParentIssue(issue: Issue): boolean {

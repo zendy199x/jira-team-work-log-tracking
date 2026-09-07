@@ -5,7 +5,7 @@ describe('TeamName', () => {
     const teamName = TeamName.from('  BKM4  ');
 
     expect(teamName.value).toBe('BKM4');
-    expect(teamName.toReportTitle()).toBe('-+-BKM4 WORK LOG REPORT-+-');
+    expect(teamName.toReportTitle()).toBe('-+[BKM4 WORKLOG REPORT]+-');
   });
 
   it('throws for empty team name', () => {

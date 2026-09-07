@@ -177,8 +177,8 @@ Behavior notes:
 
 Report header format notes:
 
-- When the input title uses the marker style `-+- ... -+-`, chat output keeps marker style and normalizes the legacy `WORK LOG` phrase into `WORKLOG`.
-- Canonical header title example: `-+-[ BKM4 WORKLOG REPORT ]-+-`.
+- When the input title uses the marker style `-+[ ... ]+-`, chat output keeps marker style and normalizes the legacy `WORK LOG` phrase into `WORKLOG`.
+- Canonical header title example: `-+[BKM4 WORKLOG REPORT]+-`.
 - The timestamp line is rendered as `Generated at: <label>`.
 - Day values in month/day labels are normalized with ordinal suffixes (`st`, `nd`, `rd`, `th`), for example `May 9` -> `May 9th`.
 
@@ -189,6 +189,7 @@ Report table/section contract:
 - Violation sections are rendered only when data exists for that violation category.
 - Violation section order is:
   - `Logs Before Ticket Creation`
+  - `Logs On Unvalidated Issue Types`
   - `Logs On Parent Tickets`
   - `Logs On Child Tickets Without Sprint`
   - `Logs Before Sprint Start`
@@ -206,7 +207,7 @@ Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026
 By default, the service uses this JQL template:
 
 ```text
-project = {TEAM_NAME} AND (type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") OR (type = Bug AND parent is not EMPTY)) AND worklogDate >= startOfDay(-2d)
+project = {TEAM_NAME} AND type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") AND worklogDate >= startOfDay(-2d)
 ```
 
 `{TEAM_NAME}` is resolved from `TEAM_NAME` at runtime.
