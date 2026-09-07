@@ -37,7 +37,7 @@ describe('ChatDeliveryService', () => {
         users: { Alice: { logs: { '2026-05-09': 3600 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+        reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       },
       'https://jira/check',
     );
@@ -46,7 +46,7 @@ describe('ChatDeliveryService', () => {
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(payload.cardsV2).toBeDefined();
     expect(payload.text).toBeDefined();
-    expect(JSON.stringify(payload)).toContain('-+-[ BKM4 WORKLOG REPORT ]-+-');
+    expect(JSON.stringify(payload)).toContain('-+[BKM4 WORKLOG REPORT]+-');
     expect(JSON.stringify(payload)).toContain('Generated at: May 9th');
     expect(JSON.stringify(payload)).toContain('```');
   });
@@ -61,7 +61,7 @@ describe('ChatDeliveryService', () => {
         users: {},
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+        reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       },
       'https://jira/check',
     );
@@ -81,7 +81,7 @@ describe('ChatDeliveryService', () => {
         users: { Alice: { logs: { '2026-05-09': 3600 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+        reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
         sprintSummaryLine: 'Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026',
       },
       'https://jira/check',
@@ -90,7 +90,7 @@ describe('ChatDeliveryService', () => {
     const payload = postMock.mock.calls[0]?.[1] as Record<string, unknown>;
     const text = String(payload.text || '');
     expect(text).toContain('Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026');
-    expect(text).toContain('-+-[ BKM4 WORKLOG REPORT ]-+-\nSprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nGenerated at: May 9th');
+    expect(text).toContain('-+[BKM4 WORKLOG REPORT]+-\nSprint 10 | Jul 12th, 2026 to Jul 21st, 2026\n\nGenerated at: May 9th');
   });
 
   it('renders anomaly tables with only violating users and issue breakdown', () => {
@@ -103,7 +103,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       anomalies: {
         beforeIssueCreated: {
           users: {},
@@ -158,7 +158,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: { users: {} },
@@ -179,7 +179,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: {
@@ -212,7 +212,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: {
@@ -250,7 +250,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       anomalies: {
         beforeIssueCreated: {
           users: {
@@ -278,7 +278,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       anomalies: {
         beforeIssueCreated: { users: {} },
         beforeSprintStart: { users: {} },
@@ -298,6 +298,35 @@ describe('ChatDeliveryService', () => {
     expect(output).toContain('0.5h (9100)');
   });
 
+  it('renders a separate table for unvalidated issue types', () => {
+    const service = new ChatDeliveryService();
+    const output = service['buildChatTextReport']({
+      users: {
+        Zendy: { logs: { '2026-05-09': 5400 } },
+      },
+      reportDate: '2026-05-09',
+      reportDateTimeLabel: 'May 9',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
+      anomalies: {
+        beforeIssueCreated: { users: {} },
+        onUnvalidatedIssueType: {
+          users: {
+            Zendy: {
+              totalSeconds: 1800,
+              issues: [{ issueKey: 'BKM4-4721', totalSeconds: 1800 }],
+            },
+          },
+        },
+        beforeSprintStart: { users: {} },
+        onChildTicketWithoutSprint: { users: {} },
+        onParentIssue: { users: {} },
+      },
+    });
+
+    expect(output).toContain('2. Logs On Unvalidated Issue Types');
+    expect(output).toContain('0.5h (4721)');
+  });
+
   it('sends app-mode message with bearer token', async () => {
     postMock.mockImplementation(async () => ({}));
     const service = new ChatDeliveryService();
@@ -313,7 +342,7 @@ describe('ChatDeliveryService', () => {
         users: { Bob: { logs: { '2026-05-09': 1200 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+        reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       },
       'https://jira/check',
     );
@@ -339,7 +368,7 @@ describe('ChatDeliveryService', () => {
         users: { Bob: { logs: { '2026-05-09': 1200 } } },
         reportDate: '2026-05-09',
         reportDateTimeLabel: 'May 9',
-        reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+        reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
       },
       'https://jira/check',
     );
@@ -360,7 +389,7 @@ describe('ChatDeliveryService', () => {
           users: {},
           reportDate: '2026-05-09',
           reportDateTimeLabel: 'May 9',
-          reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+          reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
         },
         'https://jira/check',
       ),
@@ -378,7 +407,7 @@ describe('ChatDeliveryService', () => {
           users: { Alice: { logs: { '2026-05-09': 600 } } },
           reportDate: '2026-05-09',
           reportDateTimeLabel: 'May 9',
-          reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+          reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
         },
         'https://jira/check',
       ),
@@ -402,7 +431,7 @@ describe('ChatDeliveryService', () => {
           users: { Bob: { logs: { '2026-05-09': 1200 } } },
           reportDate: '2026-05-09',
           reportDateTimeLabel: 'May 9',
-          reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+          reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
         },
         'https://jira/check',
       ),
@@ -420,7 +449,7 @@ describe('ChatDeliveryService', () => {
       users,
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
     });
 
     expect(output).toContain('Total');
@@ -439,7 +468,7 @@ describe('ChatDeliveryService', () => {
       },
       reportDate: '2026-05-09',
       reportDateTimeLabel: 'May 9',
-      reportTitle: '-+-[ BKM4 WORKLOG REPORT ]-+-',
+      reportTitle: '-+[BKM4 WORKLOG REPORT]+-',
     });
 
     expect(output).toContain('Bob');
@@ -456,7 +485,7 @@ describe('ChatDeliveryService', () => {
     });
 
     expect(output).toContain('BKM4 WORK LOG REPORT');
-    expect(output).not.toContain('-+-[ BKM4 WORKLOG REPORT ]-+-');
+    expect(output).not.toContain('-+[BKM4 WORKLOG REPORT]+-');
   });
 
   it('keeps raw report title when wrapped marker has empty body', () => {

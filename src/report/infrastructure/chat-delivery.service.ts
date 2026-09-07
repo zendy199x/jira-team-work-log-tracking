@@ -161,6 +161,15 @@ export class ChatDeliveryService implements ChatGatewayPort {
       sectionIndex += 1;
     }
 
+    const hasUnvalidatedIssueType = this.appendViolationTable(
+      lines,
+      `${sectionIndex}. Logs On Unvalidated Issue Types`,
+      anomalies.onUnvalidatedIssueType || { users: {} },
+    );
+    if (hasUnvalidatedIssueType) {
+      sectionIndex += 1;
+    }
+
     const hasParentIssue = this.appendViolationTable(
       lines,
       `${sectionIndex}. Logs On Parent Tickets`,
@@ -300,7 +309,10 @@ export class ChatDeliveryService implements ChatGatewayPort {
 
   private formatReportTitleForDisplay(reportTitle: string): string {
     const rawTitle = String(reportTitle || '').trim();
-    if (!rawTitle.startsWith('-+-') || !rawTitle.endsWith('-+-')) {
+    const hasLegacyMarker = rawTitle.startsWith('-+-') && rawTitle.endsWith('-+-');
+    const hasBracketMarker = rawTitle.startsWith('-+[') && rawTitle.endsWith(']+-');
+
+    if (!hasLegacyMarker && !hasBracketMarker) {
       return rawTitle;
     }
 
@@ -315,7 +327,7 @@ export class ChatDeliveryService implements ChatGatewayPort {
     }
 
     const worklogStyleBody = normalizedBody.replace(/\bWORK\s+LOG\b/gi, 'WORKLOG');
-    return `-+-[ ${worklogStyleBody} ]-+-`;
+    return `-+[${worklogStyleBody}]+-`;
   }
 
   private buildRetryButtons(chat: ChatDeliveryConfig): Array<Record<string, unknown>> {

@@ -11,7 +11,7 @@ export class TeamName {
   }
 
   toReportTitle(): string {
-    return `-+-${this.value} WORK LOG REPORT-+-`;
+    return `-+[${this.value} WORKLOG REPORT]+-`;
   }
 }
 

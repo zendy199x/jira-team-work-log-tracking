@@ -177,8 +177,8 @@ Ghi chú hành vi:
 
 Ghi chú định dạng header report:
 
-- Khi title đầu vào dùng marker `-+- ... -+-`, output chat giữ nguyên marker style và chuẩn hóa cụm cũ `WORK LOG` thành `WORKLOG`.
-- Ví dụ title chuẩn: `-+-[ BKM4 WORKLOG REPORT ]-+-`.
+- Khi title đầu vào dùng marker `-+[ ... ]+-`, output chat giữ nguyên marker style và chuẩn hóa cụm cũ `WORK LOG` thành `WORKLOG`.
+- Ví dụ title chuẩn: `-+[BKM4 WORKLOG REPORT]+-`.
 - Dòng thời gian hiển thị theo dạng `Generated at: <label>`.
 - Giá trị ngày trong label tháng/ngày được chuẩn hóa thêm hậu tố thứ tự (`st`, `nd`, `rd`, `th`), ví dụ `May 9` -> `May 9th`.
 
@@ -189,6 +189,7 @@ Contract cho các bảng/section trong report:
 - Các section vi phạm chỉ render khi category đó có dữ liệu.
 - Thứ tự section vi phạm là:
   - `Logs Before Ticket Creation`
+  - `Logs On Unvalidated Issue Types`
   - `Logs On Parent Tickets`
   - `Logs On Child Tickets Without Sprint`
   - `Logs Before Sprint Start`
@@ -206,7 +207,7 @@ Sprint 10 | Jul 12th, 2026 to Jul 21st, 2026
 Mặc định hệ thống dùng JQL template sau:
 
 ```text
-project = {TEAM_NAME} AND (type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") OR (type = Bug AND parent is not EMPTY)) AND worklogDate >= startOfDay(-2d)
+project = {TEAM_NAME} AND type IN (Sub-Bug, "Sub-Env and SCM", Sub-Imp, "Sub-Legacy Bug", "Sub PML", "Sub Project Kaizen", Sub-Test, "Sub Skill Up", Sub-task, Sub-ritual, "Sub Refinement", Sub-overhead, "Sub Test Execution", "Sub Automation") AND worklogDate >= startOfDay(-2d)
 ```
 
 `{TEAM_NAME}` được thay từ `TEAM_NAME` lúc runtime.

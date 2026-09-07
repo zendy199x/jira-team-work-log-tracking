@@ -39,7 +39,7 @@ describe('ReportConfigService', () => {
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.reportTitle).toBe('-+-BKM4 WORK LOG REPORT-+-');
+    expect(config.reportTitle).toBe('-+[BKM4 WORKLOG REPORT]+-');
     expect(config.jiraQuery).toContain('project = BKM4');
     expect(config.jiraAnomalyQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-2d)');
     expect(config.jiraCheckUrl).toContain('/projects/BKM4');
@@ -49,15 +49,6 @@ describe('ReportConfigService', () => {
     }
     expect(config.chat.reportUrl).toContain('/reports/retry');
     expect(config.chat.reportUrl).toContain('token=secret');
-  });
-
-  it('includes bug with parent in default jira query', () => {
-    setBaseEnv();
-
-    const service = new ReportConfigService();
-    const config = service.getRuntimeConfig();
-
-    expect(config.jiraQuery).toContain('(type = Bug AND parent is not EMPTY)');
   });
 
   it('supports app mode', () => {
