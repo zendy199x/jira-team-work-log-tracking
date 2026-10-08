@@ -142,6 +142,11 @@ Use .env.example as the source of truth.
 - JIRA_API_TOKEN
 - CRON_SECRET (required for secure production triggering)
 
+For a scoped Jira API token, set `JIRA_CLOUD_ID` to the `cloudId` value returned by
+`https://<JIRA_DOMAIN>/_edge/tenant_info`. Scoped tokens use the Atlassian API gateway;
+leave `JIRA_CLOUD_ID` empty when using an unscoped API token. Grant `read:jira-work`
+and, when `JIRA_BOARD_ID` is configured, `read:sprint:jira-software`.
+
 ### Chat Configuration
 
 GOOGLE_CHAT_MODE can be webhook or app.
@@ -165,6 +170,7 @@ If GOOGLE_CHAT_MODE=app:
 - REPORT_DATE
 - JIRA_JQL_OVERRIDE
 - JIRA_BOARD_ID
+- JIRA_CLOUD_ID (required for scoped Jira API tokens)
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
 
