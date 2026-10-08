@@ -42,6 +42,7 @@ export class ReportConfigService implements ReportConfigPort {
   getRuntimeConfig(): ReportRuntimeConfig {
     const rawDomain = this.requireEnv('JIRA_DOMAIN');
     const jiraDomain = this.normalizeJiraDomain(rawDomain);
+    const jiraCloudId = (process.env.JIRA_CLOUD_ID || '').trim();
     const teamName = TeamName.from(this.requireEnv('TEAM_NAME'));
     const jiraCheckUrl = this.resolveJiraCheckUrl(jiraDomain, teamName);
     const jiraQuery = this.buildJiraQuery(teamName);
@@ -66,6 +67,9 @@ export class ReportConfigService implements ReportConfigPort {
       jiraCheckUrl,
       jira: {
         jiraDomain,
+        ...(jiraCloudId
+          ? { jiraApiBaseUrl: `https://api.atlassian.com/ex/jira/${encodeURIComponent(jiraCloudId)}` }
+          : {}),
         jiraEmail: this.requireEnv('JIRA_EMAIL'),
         jiraApiToken: this.requireEnv('JIRA_API_TOKEN'),
       },

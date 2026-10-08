@@ -17,6 +17,7 @@ describe('ReportConfigService', () => {
     delete process.env.API_BASE_PATH;
     delete process.env.CRON_SECRET;
     delete process.env.JIRA_BOARD_ID;
+    delete process.env.JIRA_CLOUD_ID;
   });
 
   afterAll(() => {
@@ -208,6 +209,16 @@ describe('ReportConfigService', () => {
 
     expect(config.jira.jiraDomain).toBe('https://oneline.atlassian.net');
     expect(config.timezone).toBe('Asia/Ho_Chi_Minh');
+  });
+
+  it('uses the Atlassian API gateway when a Jira cloud ID is configured', () => {
+    setBaseEnv();
+    process.env.JIRA_CLOUD_ID = 'cloud-id';
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    expect(config.jira.jiraApiBaseUrl).toBe('https://api.atlassian.com/ex/jira/cloud-id');
   });
 
   it('falls back when TZ is invalid and REPORT_TIMEZONE is empty', () => {

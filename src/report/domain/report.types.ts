@@ -59,6 +59,7 @@ export interface SearchResponse {
 
 export interface JiraConfig {
   jiraDomain: string;
+  jiraApiBaseUrl?: string;
   jiraEmail: string;
   jiraApiToken: string;
 }

@@ -30,7 +30,7 @@ export class JiraApiService implements JiraGatewayPort {
         endDate?: string;
       }>;
     }>(
-      `${jira.jiraDomain}${JIRA_BOARD_SPRINT_PATH}/${boardId}/sprint`,
+      `${jira.jiraApiBaseUrl || jira.jiraDomain}${JIRA_BOARD_SPRINT_PATH}/${boardId}/sprint`,
       {
         auth: {
           username: jira.jiraEmail,
@@ -83,7 +83,7 @@ export class JiraApiService implements JiraGatewayPort {
       }
 
       const response = await axios.post<SearchResponse & { nextPageToken?: string }>(
-        `${jira.jiraDomain}${JIRA_SEARCH_PATH}`,
+        `${jira.jiraApiBaseUrl || jira.jiraDomain}${JIRA_SEARCH_PATH}`,
         payload,
         {
           auth: {
@@ -167,7 +167,7 @@ export class JiraApiService implements JiraGatewayPort {
 
     while (worklogs.length < total) {
       const response = await axios.get<WorklogResponse>(
-        `${jira.jiraDomain}${JIRA_ISSUE_WORKLOG_PATH}/${encodeURIComponent(issueKey)}/worklog`,
+        `${jira.jiraApiBaseUrl || jira.jiraDomain}${JIRA_ISSUE_WORKLOG_PATH}/${encodeURIComponent(issueKey)}/worklog`,
         {
           auth: {
             username: jira.jiraEmail,

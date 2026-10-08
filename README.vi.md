@@ -142,6 +142,11 @@ Lấy `.env.example` làm nguồn tham chiếu chính.
 - JIRA_API_TOKEN
 - CRON_SECRET (bắt buộc để trigger an toàn trên production)
 
+Với Jira API token có scope, đặt `JIRA_CLOUD_ID` bằng giá trị `cloudId` tại
+`https://<JIRA_DOMAIN>/_edge/tenant_info`. Scoped token gọi qua Atlassian API gateway;
+để trống `JIRA_CLOUD_ID` nếu dùng token không scope. Cấp `read:jira-work` và thêm
+`read:sprint:jira-software` nếu cấu hình `JIRA_BOARD_ID`.
+
 ### Cấu Hình Chat
 
 GOOGLE_CHAT_MODE có thể là webhook hoặc app.
@@ -165,6 +170,7 @@ Nếu GOOGLE_CHAT_MODE=app:
 - REPORT_DATE
 - JIRA_JQL_OVERRIDE
 - JIRA_BOARD_ID
+- JIRA_CLOUD_ID (bắt buộc khi dùng Jira API token có scope)
 - REPORT_DEBUG
 - REPORT_DEBUG_AUTHORS
 

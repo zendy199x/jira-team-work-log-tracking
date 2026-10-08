@@ -37,6 +37,24 @@ describe('JiraApiService', () => {
     expect(mockedAxios.get).toHaveBeenCalledTimes(1);
   });
 
+  it('uses the API gateway for scoped-token Jira requests', async () => {
+    mockedAxios.post.mockResolvedValue({ data: { issues: [{ key: 'BKM4-1', fields: {} }] } });
+    mockedAxios.get.mockResolvedValue({ data: { worklogs: [], total: 0, startAt: 0 } });
+    const scopedJira = { ...jira, jiraApiBaseUrl: 'https://api.atlassian.com/ex/jira/cloud-id' };
+
+    const service = new JiraApiService();
+    await service.fetchIssuesWithWorkLogs(scopedJira, 'project = BKM4', false);
+    await service.fetchActiveSprint(scopedJira, 8463);
+
+    expect(mockedAxios.post.mock.calls[0][0]).toBe(
+      'https://api.atlassian.com/ex/jira/cloud-id/rest/api/3/search/jql',
+    );
+    expect(mockedAxios.get.mock.calls.map(([url]) => url)).toEqual([
+      'https://api.atlassian.com/ex/jira/cloud-id/rest/api/3/issue/BKM4-1/worklog',
+      'https://api.atlassian.com/ex/jira/cloud-id/rest/agile/1.0/board/8463/sprint',
+    ]);
+  });
+
   it('handles paged search and debug logs', async () => {
     const circular = { issues: [], nextPageToken: 'n1', self: null as unknown };
     circular.self = circular;
