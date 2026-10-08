@@ -178,6 +178,7 @@ Ghi chú hành vi:
 
 - REPORT_TIMEZONE có độ ưu tiên cao hơn TZ.
 - REPORT_DATE hữu ích khi cần chạy lại theo ngày cố định để debug/backfill.
+- Link retry ưu tiên APP_BASE_URL, tiếp theo là production URL của Vercel, cuối cùng mới dùng URL của deployment hiện tại.
 - CRON_SECRET nên luôn có giá trị ở môi trường production.
 - JIRA_BOARD_ID bật hiển thị dòng sprint trong header report (chỉ hiện khi Jira trả về active sprint có đủ tên, ngày bắt đầu và ngày kết thúc).
 

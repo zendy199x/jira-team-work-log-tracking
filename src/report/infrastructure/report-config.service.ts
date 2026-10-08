@@ -1,56 +1,49 @@
-import {
-    Injectable,
-    Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 
-import type { ReportConfigPort } from '../domain/report.ports';
+import type { ReportConfigPort } from "../domain/report.ports";
 import {
     type AggregationDebugConfig,
     type ChatDeliveryConfig,
     ChatMode,
     type ReportRuntimeConfig,
-} from '../domain/report.types';
-import { getOrdinalSuffix, normalizeAuthorName } from '../domain/report.utils';
-import {
-    ReportDate,
-    TeamName,
-    Timezone,
-} from '../domain/value-objects';
+} from "../domain/report.types";
+import { getOrdinalSuffix, normalizeAuthorName } from "../domain/report.utils";
+import { ReportDate, TeamName, Timezone } from "../domain/value-objects";
 
 @Injectable()
 export class ReportConfigService implements ReportConfigPort {
   private readonly logger = new Logger(ReportConfigService.name);
   private static readonly JIRA_REPORT_SELECTED_ITEM =
-    'com.atlassian.plugins.atlassian-connect-plugin:com.gebsun.atlassian.reports.free__report';
+    "com.atlassian.plugins.atlassian-connect-plugin:com.gebsun.atlassian.reports.free__report";
   private static readonly JIRA_WORK_LOG_ISSUE_TYPES = [
-    'Sub-Bug',
-    'Sub-Env and SCM',
-    'Sub-Imp',
-    'Sub-Legacy Bug',
-    'Sub PML',
-    'Sub Project Kaizen',
-    'Sub-Test',
-    'Sub Skill Up',
-    'Sub-task',
-    'Sub-ritual',
-    'Sub Refinement',
-    'Sub-overhead',
-    'Sub Test Execution',
-    'Sub Automation',
+    "Sub-Bug",
+    "Sub-Env and SCM",
+    "Sub-Imp",
+    "Sub-Legacy Bug",
+    "Sub PML",
+    "Sub Project Kaizen",
+    "Sub-Test",
+    "Sub Skill Up",
+    "Sub-task",
+    "Sub-ritual",
+    "Sub Refinement",
+    "Sub-overhead",
+    "Sub Test Execution",
+    "Sub Automation",
   ];
 
   getRuntimeConfig(): ReportRuntimeConfig {
-    const rawDomain = this.requireEnv('JIRA_DOMAIN');
+    const rawDomain = this.requireEnv("JIRA_DOMAIN");
     const jiraDomain = this.normalizeJiraDomain(rawDomain);
-    const jiraCloudId = (process.env.JIRA_CLOUD_ID || '').trim();
-    const teamName = TeamName.from(this.requireEnv('TEAM_NAME'));
+    const jiraCloudId = (process.env.JIRA_CLOUD_ID || "").trim();
+    const teamName = TeamName.from(this.requireEnv("TEAM_NAME"));
     const jiraCheckUrl = this.resolveJiraCheckUrl(jiraDomain, teamName);
     const jiraQuery = this.buildJiraQuery(teamName);
     const jiraAnomalyQuery = this.buildJiraAnomalyQuery(teamName);
     const reportTitle = this.buildReportTitle(teamName);
     const jiraBoardId = this.resolveJiraBoardId();
     const timezone = this.resolveTimeZone();
-    const requestedReportDate = (process.env.REPORT_DATE || '').trim();
+    const requestedReportDate = (process.env.REPORT_DATE || "").trim();
     const reportDate = requestedReportDate
       ? ReportDate.from(requestedReportDate)
       : ReportDate.fromDate(new Date(), timezone);
@@ -58,7 +51,10 @@ export class ReportConfigService implements ReportConfigPort {
     return {
       timezone: timezone.value,
       reportDate: reportDate.value,
-      reportDateTimeLabel: this.formatDisplayDateTimeInTimeZone(new Date(), timezone.value),
+      reportDateTimeLabel: this.formatDisplayDateTimeInTimeZone(
+        new Date(),
+        timezone.value,
+      ),
       reportTitle,
       ...(jiraBoardId ? { jiraBoardId } : {}),
       jiraQuery,
@@ -68,17 +64,19 @@ export class ReportConfigService implements ReportConfigPort {
       jira: {
         jiraDomain,
         ...(jiraCloudId
-          ? { jiraApiBaseUrl: `https://api.atlassian.com/ex/jira/${encodeURIComponent(jiraCloudId)}` }
+          ? {
+              jiraApiBaseUrl: `https://api.atlassian.com/ex/jira/${encodeURIComponent(jiraCloudId)}`,
+            }
           : {}),
-        jiraEmail: this.requireEnv('JIRA_EMAIL'),
-        jiraApiToken: this.requireEnv('JIRA_API_TOKEN'),
+        jiraEmail: this.requireEnv("JIRA_EMAIL"),
+        jiraApiToken: this.requireEnv("JIRA_API_TOKEN"),
       },
       chat: this.getChatDeliveryConfig(),
     };
   }
 
   canTriggerWithToken(token: string): boolean {
-    const requiredToken = (process.env.CRON_SECRET || '').trim();
+    const requiredToken = (process.env.CRON_SECRET || "").trim();
 
     if (!requiredToken) {
       return true;
@@ -88,7 +86,7 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   isRetryAction(invokedFunction: string): boolean {
-    return invokedFunction === 'retry_report';
+    return invokedFunction === "retry_report";
   }
 
   private getChatDeliveryConfig(): ChatDeliveryConfig {
@@ -98,31 +96,32 @@ export class ReportConfigService implements ReportConfigPort {
     if (mode === ChatMode.APP) {
       return {
         mode: ChatMode.APP,
-        space: this.requireEnv('GOOGLE_CHAT_SPACE'),
-        serviceAccountEmail: this.requireEnv('GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL'),
-        serviceAccountPrivateKey: this.requireEnv('GOOGLE_CHAT_SERVICE_ACCOUNT_PRIVATE_KEY').replaceAll(
-          String.raw`\n`,
-          '\n',
+        space: this.requireEnv("GOOGLE_CHAT_SPACE"),
+        serviceAccountEmail: this.requireEnv(
+          "GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL",
         ),
+        serviceAccountPrivateKey: this.requireEnv(
+          "GOOGLE_CHAT_SERVICE_ACCOUNT_PRIVATE_KEY",
+        ).replaceAll(String.raw`\n`, "\n"),
         ...(reportUrl ? { reportUrl } : {}),
       };
     }
 
     return {
       mode: ChatMode.WEBHOOK,
-      webhook: this.requireEnv('WEBHOOK'),
+      webhook: this.requireEnv("WEBHOOK"),
       ...(reportUrl ? { reportUrl } : {}),
     };
   }
 
   private resolveChatMode(): ChatMode {
-    const rawMode = (process.env.GOOGLE_CHAT_MODE || '').trim().toLowerCase();
+    const rawMode = (process.env.GOOGLE_CHAT_MODE || "").trim().toLowerCase();
 
     if (rawMode === ChatMode.APP) {
       return ChatMode.APP;
     }
 
-    if (rawMode === '' || rawMode === ChatMode.WEBHOOK) {
+    if (rawMode === "" || rawMode === ChatMode.WEBHOOK) {
       return ChatMode.WEBHOOK;
     }
 
@@ -133,9 +132,9 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private resolveTimeZone(): Timezone {
-    const fallbackTimeZone = 'Asia/Ho_Chi_Minh';
-    const rawReportTimeZone = (process.env.REPORT_TIMEZONE || '').trim();
-    const normalizedReportTimeZone = rawReportTimeZone.replaceAll(/^:+/g, '');
+    const fallbackTimeZone = "Asia/Ho_Chi_Minh";
+    const rawReportTimeZone = (process.env.REPORT_TIMEZONE || "").trim();
+    const normalizedReportTimeZone = rawReportTimeZone.replaceAll(/^:+/g, "");
 
     if (normalizedReportTimeZone) {
       try {
@@ -148,27 +147,29 @@ export class ReportConfigService implements ReportConfigPort {
       }
     }
 
-    const rawTimeZone = (process.env.TZ || '').trim();
-    const normalizedTimeZone = rawTimeZone.replaceAll(/^:+/g, '');
+    const rawTimeZone = (process.env.TZ || "").trim();
+    const normalizedTimeZone = rawTimeZone.replaceAll(/^:+/g, "");
 
     if (!normalizedTimeZone) {
       return Timezone.from(fallbackTimeZone);
     }
 
-    if (['UTC', 'Etc/UTC', 'Etc/GMT'].includes(normalizedTimeZone)) {
+    if (["UTC", "Etc/UTC", "Etc/GMT"].includes(normalizedTimeZone)) {
       return Timezone.from(fallbackTimeZone);
     }
 
     try {
       return Timezone.from(normalizedTimeZone);
     } catch {
-      this.logger.warn(`Invalid TZ value "${rawTimeZone}". Falling back to ${fallbackTimeZone}.`);
+      this.logger.warn(
+        `Invalid TZ value "${rawTimeZone}". Falling back to ${fallbackTimeZone}.`,
+      );
       return Timezone.from(fallbackTimeZone);
     }
   }
 
   private requireEnv(name: string): string {
-    const value = (process.env[name] || '').trim();
+    const value = (process.env[name] || "").trim();
     if (!value) {
       throw new Error(`Missing required environment variable: ${name}`);
     }
@@ -176,7 +177,9 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private normalizeJiraDomain(rawDomain: string): string {
-    const withScheme = /^https?:\/\//i.test(rawDomain) ? rawDomain : `https://${rawDomain}`;
+    const withScheme = /^https?:\/\//i.test(rawDomain)
+      ? rawDomain
+      : `https://${rawDomain}`;
 
     let normalized: URL;
     try {
@@ -193,8 +196,14 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private resolveJiraCheckUrl(jiraDomain: string, teamName: TeamName): string {
-    const jiraCheckUrl = new URL(`/projects/${encodeURIComponent(teamName.value)}`, jiraDomain);
-    jiraCheckUrl.searchParams.set('selectedItem', ReportConfigService.JIRA_REPORT_SELECTED_ITEM);
+    const jiraCheckUrl = new URL(
+      `/projects/${encodeURIComponent(teamName.value)}`,
+      jiraDomain,
+    );
+    jiraCheckUrl.searchParams.set(
+      "selectedItem",
+      ReportConfigService.JIRA_REPORT_SELECTED_ITEM,
+    );
     return jiraCheckUrl.toString();
   }
 
@@ -203,52 +212,54 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private buildJiraQuery(teamName: TeamName): string {
-    const configuredJql = (process.env.JIRA_JQL_OVERRIDE || '').trim();
+    const configuredJql = (process.env.JIRA_JQL_OVERRIDE || "").trim();
     if (configuredJql) {
-      return configuredJql.replaceAll('{TEAM_NAME}', teamName.value);
+      return configuredJql.replaceAll("{TEAM_NAME}", teamName.value);
     }
 
-    const issueTypes = ReportConfigService.JIRA_WORK_LOG_ISSUE_TYPES.map((issueType) => {
-      if (issueType.includes(' ')) {
-        return `"${issueType}"`;
-      }
-      return issueType;
-    }).join(', ');
+    const issueTypes = ReportConfigService.JIRA_WORK_LOG_ISSUE_TYPES.map(
+      (issueType) => {
+        if (issueType.includes(" ")) {
+          return `"${issueType}"`;
+        }
+        return issueType;
+      },
+    ).join(", ");
 
     return `project = ${teamName.value} AND type IN (${issueTypes}) AND worklogDate >= startOfDay(-2d)`;
   }
 
   private buildJiraAnomalyQuery(teamName: TeamName): string {
-    const configuredJql = (process.env.JIRA_ANOMALY_JQL_OVERRIDE || '').trim();
+    const configuredJql = (process.env.JIRA_ANOMALY_JQL_OVERRIDE || "").trim();
     if (configuredJql) {
-      return configuredJql.replaceAll('{TEAM_NAME}', teamName.value);
+      return configuredJql.replaceAll("{TEAM_NAME}", teamName.value);
     }
 
     return `project = ${teamName.value} AND worklogDate >= startOfDay(-2d)`;
   }
 
   private resolveJiraBoardId(): number | undefined {
-    const rawBoardId = (process.env.JIRA_BOARD_ID || '').trim();
+    const rawBoardId = (process.env.JIRA_BOARD_ID || "").trim();
     if (!rawBoardId) {
       return undefined;
     }
 
     const boardId = Number(rawBoardId);
     if (!Number.isInteger(boardId) || boardId <= 0) {
-      throw new Error('Invalid JIRA_BOARD_ID. It must be a positive integer.');
+      throw new Error("Invalid JIRA_BOARD_ID. It must be a positive integer.");
     }
 
     return boardId;
   }
 
   private getAggregationDebugConfig(): AggregationDebugConfig {
-    const enabled = this.isTruthyValue((process.env.REPORT_DEBUG || '').trim());
-    const rawFilters = (process.env.REPORT_DEBUG_AUTHORS || '').trim();
+    const enabled = this.isTruthyValue((process.env.REPORT_DEBUG || "").trim());
+    const rawFilters = (process.env.REPORT_DEBUG_AUTHORS || "").trim();
     const authorFilters = rawFilters
       ? rawFilters
-        .split(',')
-        .map((item) => normalizeAuthorName(item).toLowerCase())
-        .filter(Boolean)
+          .split(",")
+          .map((item) => normalizeAuthorName(item).toLowerCase())
+          .filter(Boolean)
       : [];
 
     return {
@@ -258,35 +269,41 @@ export class ReportConfigService implements ReportConfigPort {
   }
 
   private isTruthyValue(value: string): boolean {
-    return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+    return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
   }
 
-  private formatDisplayDateTimeInTimeZone(date: Date, timeZone: string): string {
-    const formatter = new Intl.DateTimeFormat('en-US', {
+  private formatDisplayDateTimeInTimeZone(
+    date: Date,
+    timeZone: string,
+  ): string {
+    const formatter = new Intl.DateTimeFormat("en-US", {
       timeZone,
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
       hour12: true,
-      timeZoneName: 'shortOffset',
+      timeZoneName: "shortOffset",
     });
 
     const parts = formatter.formatToParts(date);
-    const month = parts.find((part) => part.type === 'month')?.value || '';
-    const day = parts.find((part) => part.type === 'day')?.value || '';
+    const month = parts.find((part) => part.type === "month")?.value || "";
+    const day = parts.find((part) => part.type === "day")?.value || "";
     const dayNumber = Number(day);
-    const daySuffix = Number.isInteger(dayNumber) && dayNumber > 0
-      ? getOrdinalSuffix(dayNumber)
-      : '';
-    const year = parts.find((part) => part.type === 'year')?.value || '';
-    const hour = parts.find((part) => part.type === 'hour')?.value || '';
-    const minute = parts.find((part) => part.type === 'minute')?.value || '';
-    const second = parts.find((part) => part.type === 'second')?.value || '';
-    const dayPeriod = parts.find((part) => part.type === 'dayPeriod')?.value || '';
-    const timeZoneName = parts.find((part) => part.type === 'timeZoneName')?.value || '';
+    const daySuffix =
+      Number.isInteger(dayNumber) && dayNumber > 0
+        ? getOrdinalSuffix(dayNumber)
+        : "";
+    const year = parts.find((part) => part.type === "year")?.value || "";
+    const hour = parts.find((part) => part.type === "hour")?.value || "";
+    const minute = parts.find((part) => part.type === "minute")?.value || "";
+    const second = parts.find((part) => part.type === "second")?.value || "";
+    const dayPeriod =
+      parts.find((part) => part.type === "dayPeriod")?.value || "";
+    const timeZoneName =
+      parts.find((part) => part.type === "timeZoneName")?.value || "";
 
     return `${month} ${day}${daySuffix}, ${year}, ${hour}:${minute}:${second} ${dayPeriod} (${timeZoneName})`;
   }
@@ -297,55 +314,73 @@ export class ReportConfigService implements ReportConfigPort {
     try {
       baseUrl = new URL(appBaseUrl);
     } catch {
-      this.logger.warn('APP_BASE_URL is invalid. Retry button will be skipped.');
+      this.logger.warn(
+        "APP_BASE_URL is invalid. Retry button will be skipped.",
+      );
       return null;
     }
 
-    if (this.isLocalhostHost(baseUrl.hostname) && baseUrl.protocol === 'https:') {
-      baseUrl.protocol = 'http:';
-      this.logger.warn('APP_BASE_URL uses https on localhost. Falling back to http for retry URL.');
+    if (
+      this.isLocalhostHost(baseUrl.hostname) &&
+      baseUrl.protocol === "https:"
+    ) {
+      baseUrl.protocol = "http:";
+      this.logger.warn(
+        "APP_BASE_URL uses https on localhost. Falling back to http for retry URL.",
+      );
     }
 
-    const configuredApiBasePath = (process.env.API_BASE_PATH || '').trim();
-    const defaultApiBasePath = process.env.VERCEL ? '/api' : '';
+    const configuredApiBasePath = (process.env.API_BASE_PATH || "").trim();
+    const defaultApiBasePath = process.env.VERCEL ? "/api" : "";
     const rawApiBasePath = configuredApiBasePath || defaultApiBasePath;
     const trimmedApiBasePath = this.trimSlashes(rawApiBasePath);
-    const normalizedApiBasePath = rawApiBasePath ? `/${trimmedApiBasePath}` : '';
+    const normalizedApiBasePath = rawApiBasePath
+      ? `/${trimmedApiBasePath}`
+      : "";
 
     const retryUrl = new URL(`${normalizedApiBasePath}/reports/retry`, baseUrl);
-    const cronSecret = (process.env.CRON_SECRET || '').trim();
+    const cronSecret = (process.env.CRON_SECRET || "").trim();
 
     if (cronSecret) {
-      retryUrl.searchParams.set('token', cronSecret);
+      retryUrl.searchParams.set("token", cronSecret);
     } else {
-      this.logger.warn('CRON_SECRET is empty. Retry button will trigger a public endpoint.');
+      this.logger.warn(
+        "CRON_SECRET is empty. Retry button will trigger a public endpoint.",
+      );
     }
 
     return retryUrl.toString();
   }
 
   private resolveAppBaseUrl(): string {
-    const configuredAppBaseUrl = (process.env.APP_BASE_URL || '').trim();
+    const configuredAppBaseUrl = (process.env.APP_BASE_URL || "").trim();
     if (configuredAppBaseUrl) {
       return configuredAppBaseUrl;
     }
 
-    const vercelUrl = (process.env.VERCEL_URL || '').trim();
+    const productionVercelUrl = (
+      process.env.VERCEL_PROJECT_PRODUCTION_URL || ""
+    ).trim();
+    if (productionVercelUrl) {
+      return `https://${productionVercelUrl}`;
+    }
+
+    const vercelUrl = (process.env.VERCEL_URL || "").trim();
     if (vercelUrl) {
       return `https://${vercelUrl}`;
     }
 
-    const port = (process.env.PORT || '').trim() || '3000';
+    const port = (process.env.PORT || "").trim() || "3000";
     return `http://localhost:${port}`;
   }
 
   private isLocalhostHost(hostname: string): boolean {
     const normalized = hostname.trim().toLowerCase();
     return (
-      normalized === 'localhost' ||
-      normalized === '127.0.0.1' ||
-      normalized === '::1' ||
-      normalized.endsWith('.localhost')
+      normalized === "localhost" ||
+      normalized === "127.0.0.1" ||
+      normalized === "::1" ||
+      normalized.endsWith(".localhost")
     );
   }
 
@@ -353,11 +388,11 @@ export class ReportConfigService implements ReportConfigPort {
     let start = 0;
     let end = value.length;
 
-    while (start < end && value[start] === '/') {
+    while (start < end && value[start] === "/") {
       start += 1;
     }
 
-    while (end > start && value[end - 1] === '/') {
+    while (end > start && value[end - 1] === "/") {
       end -= 1;
     }
 

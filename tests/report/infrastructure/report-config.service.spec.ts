@@ -1,9 +1,7 @@
-import { normalizeAuthorName } from '../../../src/report/domain/report.utils';
-import {
-    ReportConfigService,
-} from '../../../src/report/infrastructure/report-config.service';
+import { normalizeAuthorName } from "../../../src/report/domain/report.utils";
+import { ReportConfigService } from "../../../src/report/infrastructure/report-config.service";
 
-describe('ReportConfigService', () => {
+describe("ReportConfigService", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -14,6 +12,7 @@ describe('ReportConfigService', () => {
     delete process.env.GOOGLE_CHAT_MODE;
     delete process.env.APP_BASE_URL;
     delete process.env.VERCEL_URL;
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
     delete process.env.API_BASE_PATH;
     delete process.env.CRON_SECRET;
     delete process.env.JIRA_BOARD_ID;
@@ -25,309 +24,367 @@ describe('ReportConfigService', () => {
   });
 
   function setBaseEnv() {
-    process.env.TEAM_NAME = 'BKM4';
-    process.env.JIRA_DOMAIN = 'https://oneline.atlassian.net';
-    process.env.JIRA_EMAIL = 'bot@example.com';
-    process.env.JIRA_API_TOKEN = 'token';
-    process.env.WEBHOOK = 'https://chat.googleapis.com/v1/spaces/x/messages?key=a&token=b';
-    process.env.CRON_SECRET = 'secret';
+    process.env.TEAM_NAME = "BKM4";
+    process.env.JIRA_DOMAIN = "https://oneline.atlassian.net";
+    process.env.JIRA_EMAIL = "bot@example.com";
+    process.env.JIRA_API_TOKEN = "token";
+    process.env.WEBHOOK =
+      "https://chat.googleapis.com/v1/spaces/x/messages?key=a&token=b";
+    process.env.CRON_SECRET = "secret";
   }
 
-  it('builds runtime config in webhook mode', () => {
+  it("builds runtime config in webhook mode", () => {
     setBaseEnv();
-    process.env.CRON_SECRET = 'secret';
+    process.env.CRON_SECRET = "secret";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.reportTitle).toBe('-+[BKM4 WORKLOG REPORT]+-');
-    expect(config.jiraQuery).toContain('project = BKM4');
-    expect(config.jiraAnomalyQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-2d)');
-    expect(config.jiraCheckUrl).toContain('/projects/BKM4');
-    expect(config.chat.mode).toBe('webhook');
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
+    expect(config.reportTitle).toBe("-+[BKM4 WORKLOG REPORT]+-");
+    expect(config.jiraQuery).toContain("project = BKM4");
+    expect(config.jiraAnomalyQuery).toBe(
+      "project = BKM4 AND worklogDate >= startOfDay(-2d)",
+    );
+    expect(config.jiraCheckUrl).toContain("/projects/BKM4");
+    expect(config.chat.mode).toBe("webhook");
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
     }
-    expect(config.chat.reportUrl).toContain('/reports/retry');
-    expect(config.chat.reportUrl).toContain('token=secret');
+    expect(config.chat.reportUrl).toContain("/reports/retry");
+    expect(config.chat.reportUrl).toContain("token=secret");
   });
 
-  it('supports app mode', () => {
+  it("supports app mode", () => {
     setBaseEnv();
-    process.env.GOOGLE_CHAT_MODE = 'app';
-    process.env.GOOGLE_CHAT_SPACE = 'spaces/AAA';
-    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL = 'svc@example.com';
+    process.env.GOOGLE_CHAT_MODE = "app";
+    process.env.GOOGLE_CHAT_SPACE = "spaces/AAA";
+    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL = "svc@example.com";
     process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_PRIVATE_KEY = String.raw`line1\nline2`;
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.chat.mode).toBe('app');
-    if (config.chat.mode !== 'app') {
-      throw new Error('Expected app chat mode');
+    expect(config.chat.mode).toBe("app");
+    if (config.chat.mode !== "app") {
+      throw new Error("Expected app chat mode");
     }
-    expect(config.chat.serviceAccountPrivateKey).toContain('\n');
-    expect((config.chat as { reportUrl?: string }).reportUrl).toContain('/reports/retry');
-  });
-
-  it('supports app mode without retry url when APP_BASE_URL is invalid', () => {
-    setBaseEnv();
-    process.env.GOOGLE_CHAT_MODE = 'app';
-    process.env.GOOGLE_CHAT_SPACE = 'spaces/AAA';
-    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL = 'svc@example.com';
-    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_PRIVATE_KEY = String.raw`line1\nline2`;
-    process.env.APP_BASE_URL = 'not-a-valid-url';
-
-    const service = new ReportConfigService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
-    const config = service.getRuntimeConfig();
-
-    expect(config.chat.mode).toBe('app');
-    if (config.chat.mode !== 'app') {
-      throw new Error('Expected app chat mode');
-    }
-    expect((config.chat as { reportUrl?: string }).reportUrl).toBeUndefined();
-    expect(warnSpy).toHaveBeenCalledWith('APP_BASE_URL is invalid. Retry button will be skipped.');
-  });
-
-  it('normalizes localhost https APP_BASE_URL to http for retry url', () => {
-    setBaseEnv();
-    process.env.APP_BASE_URL = 'https://localhost:3000';
-    process.env.CRON_SECRET = 'abc';
-
-    const service = new ReportConfigService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
-    const config = service.getRuntimeConfig();
-
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
-    }
-    expect(config.chat.reportUrl).toContain('http://localhost:3000/reports/retry');
-    expect(warnSpy).toHaveBeenCalledWith(
-      'APP_BASE_URL uses https on localhost. Falling back to http for retry URL.',
+    expect(config.chat.serviceAccountPrivateKey).toContain("\n");
+    expect((config.chat as { reportUrl?: string }).reportUrl).toContain(
+      "/reports/retry",
     );
   });
 
-  it('falls back on invalid chat mode and timezone', () => {
+  it("supports app mode without retry url when APP_BASE_URL is invalid", () => {
     setBaseEnv();
-    process.env.GOOGLE_CHAT_MODE = 'invalid';
-    process.env.REPORT_TIMEZONE = 'Invalid/Zone';
+    process.env.GOOGLE_CHAT_MODE = "app";
+    process.env.GOOGLE_CHAT_SPACE = "spaces/AAA";
+    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_EMAIL = "svc@example.com";
+    process.env.GOOGLE_CHAT_SERVICE_ACCOUNT_PRIVATE_KEY = String.raw`line1\nline2`;
+    process.env.APP_BASE_URL = "not-a-valid-url";
 
     const service = new ReportConfigService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
     const config = service.getRuntimeConfig();
 
-    expect(config.chat.mode).toBe('webhook');
-    expect(config.timezone).toBe('Asia/Ho_Chi_Minh');
+    expect(config.chat.mode).toBe("app");
+    if (config.chat.mode !== "app") {
+      throw new Error("Expected app chat mode");
+    }
+    expect((config.chat as { reportUrl?: string }).reportUrl).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "APP_BASE_URL is invalid. Retry button will be skipped.",
+    );
+  });
+
+  it("normalizes localhost https APP_BASE_URL to http for retry url", () => {
+    setBaseEnv();
+    process.env.APP_BASE_URL = "https://localhost:3000";
+    process.env.CRON_SECRET = "abc";
+
+    const service = new ReportConfigService();
+    const warnSpy = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
+    const config = service.getRuntimeConfig();
+
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
+    }
+    expect(config.chat.reportUrl).toContain(
+      "http://localhost:3000/reports/retry",
+    );
+    expect(warnSpy).toHaveBeenCalledWith(
+      "APP_BASE_URL uses https on localhost. Falling back to http for retry URL.",
+    );
+  });
+
+  it("falls back on invalid chat mode and timezone", () => {
+    setBaseEnv();
+    process.env.GOOGLE_CHAT_MODE = "invalid";
+    process.env.REPORT_TIMEZONE = "Invalid/Zone";
+
+    const service = new ReportConfigService();
+    const warnSpy = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
+    const config = service.getRuntimeConfig();
+
+    expect(config.chat.mode).toBe("webhook");
+    expect(config.timezone).toBe("Asia/Ho_Chi_Minh");
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it('falls back to localhost when app base url is missing', () => {
+  it("falls back to localhost when app base url is missing", () => {
     setBaseEnv();
-    process.env.PORT = '4321';
+    process.env.PORT = "4321";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
     }
-    expect(config.chat.reportUrl).toContain('http://localhost:4321');
+    expect(config.chat.reportUrl).toContain("http://localhost:4321");
   });
 
-  it('uses vercel url fallback', () => {
+  it("uses vercel url fallback", () => {
     setBaseEnv();
-    process.env.VERCEL_URL = 'demo.vercel.app';
+    process.env.VERCEL_URL = "demo.vercel.app";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
     }
-    expect(config.chat.reportUrl).toContain('https://demo.vercel.app');
+    expect(config.chat.reportUrl).toContain("https://demo.vercel.app");
   });
 
-  it('validates required env and domain format', () => {
+  it("prefers Vercel production URL over deployment-specific URL", () => {
+    setBaseEnv();
+    process.env.VERCEL_URL = "preview-deployment.vercel.app";
+    process.env.VERCEL_PROJECT_PRODUCTION_URL =
+      "bkm4-work-log-report.vercel.app";
+
+    const service = new ReportConfigService();
+    const config = service.getRuntimeConfig();
+
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
+    }
+    expect(config.chat.reportUrl).toContain(
+      "https://bkm4-work-log-report.vercel.app",
+    );
+    expect(config.chat.reportUrl).not.toContain(
+      "preview-deployment.vercel.app",
+    );
+  });
+
+  it("validates required env and domain format", () => {
     setBaseEnv();
     delete process.env.JIRA_EMAIL;
 
     const service = new ReportConfigService();
-    expect(() => service.getRuntimeConfig()).toThrow('Missing required environment variable: JIRA_EMAIL');
+    expect(() => service.getRuntimeConfig()).toThrow(
+      "Missing required environment variable: JIRA_EMAIL",
+    );
 
-    process.env.JIRA_EMAIL = 'bot@example.com';
-    process.env.JIRA_DOMAIN = '%%%';
-    expect(() => service.getRuntimeConfig()).toThrow('Invalid JIRA_DOMAIN');
+    process.env.JIRA_EMAIL = "bot@example.com";
+    process.env.JIRA_DOMAIN = "%%%";
+    expect(() => service.getRuntimeConfig()).toThrow("Invalid JIRA_DOMAIN");
   });
 
-  it('throws when normalized jira domain has no hostname', () => {
+  it("throws when normalized jira domain has no hostname", () => {
     setBaseEnv();
     const service = new ReportConfigService();
     const actualUrl = globalThis.URL;
 
     globalThis.URL = jest
       .fn()
-      .mockImplementation(() => ({ hostname: '', origin: 'https://x' })) as unknown as typeof URL;
+      .mockImplementation(() => ({
+        hostname: "",
+        origin: "https://x",
+      })) as unknown as typeof URL;
 
-    expect(() => service['normalizeJiraDomain']('https://example.com')).toThrow(
-      'Invalid JIRA_DOMAIN hostname',
+    expect(() => service["normalizeJiraDomain"]("https://example.com")).toThrow(
+      "Invalid JIRA_DOMAIN hostname",
     );
 
     globalThis.URL = actualUrl;
   });
 
-  it('validates report date format', () => {
+  it("validates report date format", () => {
     setBaseEnv();
-    process.env.REPORT_DATE = '2026/05/09';
+    process.env.REPORT_DATE = "2026/05/09";
 
     const service = new ReportConfigService();
-    expect(() => service.getRuntimeConfig()).toThrow('Invalid REPORT_DATE format');
+    expect(() => service.getRuntimeConfig()).toThrow(
+      "Invalid REPORT_DATE format",
+    );
   });
 
-  it('handles token checks and retry action', () => {
+  it("handles token checks and retry action", () => {
     setBaseEnv();
     const service = new ReportConfigService();
 
-    process.env.CRON_SECRET = '';
-    expect(service.canTriggerWithToken('anything')).toBe(true);
+    process.env.CRON_SECRET = "";
+    expect(service.canTriggerWithToken("anything")).toBe(true);
 
-    process.env.CRON_SECRET = 'abc';
-    expect(service.canTriggerWithToken('abc')).toBe(true);
-    expect(service.canTriggerWithToken('x')).toBe(false);
+    process.env.CRON_SECRET = "abc";
+    expect(service.canTriggerWithToken("abc")).toBe(true);
+    expect(service.canTriggerWithToken("x")).toBe(false);
 
-    expect(service.isRetryAction('retry_report')).toBe(true);
-    expect(service.isRetryAction('other')).toBe(false);
+    expect(service.isRetryAction("retry_report")).toBe(true);
+    expect(service.isRetryAction("other")).toBe(false);
   });
 
-  it('normalizes jira domain without scheme and applies default timezone on UTC TZ', () => {
+  it("normalizes jira domain without scheme and applies default timezone on UTC TZ", () => {
     setBaseEnv();
-    process.env.JIRA_DOMAIN = 'oneline.atlassian.net';
-    process.env.TZ = 'UTC';
+    process.env.JIRA_DOMAIN = "oneline.atlassian.net";
+    process.env.TZ = "UTC";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.jira.jiraDomain).toBe('https://oneline.atlassian.net');
-    expect(config.timezone).toBe('Asia/Ho_Chi_Minh');
+    expect(config.jira.jiraDomain).toBe("https://oneline.atlassian.net");
+    expect(config.timezone).toBe("Asia/Ho_Chi_Minh");
   });
 
-  it('uses the Atlassian API gateway when a Jira cloud ID is configured', () => {
+  it("uses the Atlassian API gateway when a Jira cloud ID is configured", () => {
     setBaseEnv();
-    process.env.JIRA_CLOUD_ID = 'cloud-id';
+    process.env.JIRA_CLOUD_ID = "cloud-id";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.jira.jiraApiBaseUrl).toBe('https://api.atlassian.com/ex/jira/cloud-id');
+    expect(config.jira.jiraApiBaseUrl).toBe(
+      "https://api.atlassian.com/ex/jira/cloud-id",
+    );
   });
 
-  it('falls back when TZ is invalid and REPORT_TIMEZONE is empty', () => {
+  it("falls back when TZ is invalid and REPORT_TIMEZONE is empty", () => {
     setBaseEnv();
-    process.env.TZ = 'Invalid/Timezone';
+    process.env.TZ = "Invalid/Timezone";
 
     const service = new ReportConfigService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
     const config = service.getRuntimeConfig();
 
-    expect(config.timezone).toBe('Asia/Ho_Chi_Minh');
+    expect(config.timezone).toBe("Asia/Ho_Chi_Minh");
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it('parses debug flags and author filters', () => {
+  it("parses debug flags and author filters", () => {
     setBaseEnv();
-    process.env.REPORT_DEBUG = 'yes';
-    process.env.REPORT_DEBUG_AUTHORS = 'Alice (BKM4), Bob';
+    process.env.REPORT_DEBUG = "yes";
+    process.env.REPORT_DEBUG_AUTHORS = "Alice (BKM4), Bob";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
     expect(config.aggregationDebug.enabled).toBe(true);
-    expect(config.aggregationDebug.authorFilters).toEqual(['alice', 'bob']);
+    expect(config.aggregationDebug.authorFilters).toEqual(["alice", "bob"]);
   });
 
-  it('uses JIRA_JQL_OVERRIDE directly when provided', () => {
+  it("uses JIRA_JQL_OVERRIDE directly when provided", () => {
     setBaseEnv();
-    process.env.JIRA_JQL_OVERRIDE = 'project = BKM4 AND statusCategory != Done';
+    process.env.JIRA_JQL_OVERRIDE = "project = BKM4 AND statusCategory != Done";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.jiraQuery).toBe('project = BKM4 AND statusCategory != Done');
+    expect(config.jiraQuery).toBe("project = BKM4 AND statusCategory != Done");
   });
 
-  it('replaces TEAM_NAME placeholder in JIRA_JQL_OVERRIDE', () => {
+  it("replaces TEAM_NAME placeholder in JIRA_JQL_OVERRIDE", () => {
     setBaseEnv();
-    process.env.TEAM_NAME = 'BKM4';
-    process.env.JIRA_JQL_OVERRIDE = 'project = {TEAM_NAME} AND worklogDate >= startOfDay(-1d)';
+    process.env.TEAM_NAME = "BKM4";
+    process.env.JIRA_JQL_OVERRIDE =
+      "project = {TEAM_NAME} AND worklogDate >= startOfDay(-1d)";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    expect(config.jiraQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-1d)');
+    expect(config.jiraQuery).toBe(
+      "project = BKM4 AND worklogDate >= startOfDay(-1d)",
+    );
   });
 
-  it('supports JIRA_ANOMALY_JQL_OVERRIDE independently from report JQL', () => {
+  it("supports JIRA_ANOMALY_JQL_OVERRIDE independently from report JQL", () => {
     setBaseEnv();
-    process.env.JIRA_JQL_OVERRIDE = 'project = {TEAM_NAME} AND type IN ("Sub-task")';
+    process.env.JIRA_JQL_OVERRIDE =
+      'project = {TEAM_NAME} AND type IN ("Sub-task")';
     process.env.JIRA_ANOMALY_JQL_OVERRIDE =
-      'project = {TEAM_NAME} AND worklogDate >= startOfDay(-7d)';
+      "project = {TEAM_NAME} AND worklogDate >= startOfDay(-7d)";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
     expect(config.jiraQuery).toBe('project = BKM4 AND type IN ("Sub-task")');
-    expect(config.jiraAnomalyQuery).toBe('project = BKM4 AND worklogDate >= startOfDay(-7d)');
-  });
-
-  it('omits retry report token when CRON_SECRET is empty and warns', () => {
-    setBaseEnv();
-    process.env.CRON_SECRET = '';
-
-    const service = new ReportConfigService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
-    const config = service.getRuntimeConfig();
-
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
-    }
-    expect(config.chat.reportUrl).not.toContain('token=');
-    expect(warnSpy).toHaveBeenCalledWith(
-      'CRON_SECRET is empty. Retry button will trigger a public endpoint.',
+    expect(config.jiraAnomalyQuery).toBe(
+      "project = BKM4 AND worklogDate >= startOfDay(-7d)",
     );
   });
 
-  it('returns null retry URL when APP_BASE_URL is invalid', () => {
+  it("omits retry report token when CRON_SECRET is empty and warns", () => {
     setBaseEnv();
-    process.env.APP_BASE_URL = 'not-a-valid-url';
+    process.env.CRON_SECRET = "";
 
     const service = new ReportConfigService();
-    const warnSpy = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
+    const warnSpy = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
     const config = service.getRuntimeConfig();
 
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
+    }
+    expect(config.chat.reportUrl).not.toContain("token=");
+    expect(warnSpy).toHaveBeenCalledWith(
+      "CRON_SECRET is empty. Retry button will trigger a public endpoint.",
+    );
+  });
+
+  it("returns null retry URL when APP_BASE_URL is invalid", () => {
+    setBaseEnv();
+    process.env.APP_BASE_URL = "not-a-valid-url";
+
+    const service = new ReportConfigService();
+    const warnSpy = jest
+      .spyOn(service["logger"], "warn")
+      .mockImplementation(() => undefined);
+    const config = service.getRuntimeConfig();
+
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
     }
     expect(config.chat.reportUrl).toBeUndefined();
-    expect(warnSpy).toHaveBeenCalledWith('APP_BASE_URL is invalid. Retry button will be skipped.');
+    expect(warnSpy).toHaveBeenCalledWith(
+      "APP_BASE_URL is invalid. Retry button will be skipped.",
+    );
   });
 
-  it('supports API_BASE_PATH normalization', () => {
+  it("supports API_BASE_PATH normalization", () => {
     setBaseEnv();
-    process.env.API_BASE_PATH = '/api/';
-    process.env.CRON_SECRET = 'abc';
+    process.env.API_BASE_PATH = "/api/";
+    process.env.CRON_SECRET = "abc";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
     }
-    expect(config.chat.reportUrl).toContain('/api/reports/retry');
+    expect(config.chat.reportUrl).toContain("/api/reports/retry");
   });
 
-  it('includes jiraBoardId when JIRA_BOARD_ID is set', () => {
+  it("includes jiraBoardId when JIRA_BOARD_ID is set", () => {
     setBaseEnv();
-    process.env.JIRA_BOARD_ID = '8463';
+    process.env.JIRA_BOARD_ID = "8463";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
@@ -335,66 +392,79 @@ describe('ReportConfigService', () => {
     expect(config.jiraBoardId).toBe(8463);
   });
 
-  it('throws when JIRA_BOARD_ID is invalid', () => {
+  it("throws when JIRA_BOARD_ID is invalid", () => {
     setBaseEnv();
-    process.env.JIRA_BOARD_ID = 'abc';
+    process.env.JIRA_BOARD_ID = "abc";
 
     const service = new ReportConfigService();
     expect(() => service.getRuntimeConfig()).toThrow(
-      'Invalid JIRA_BOARD_ID. It must be a positive integer.',
+      "Invalid JIRA_BOARD_ID. It must be a positive integer.",
     );
   });
 
-  it('uses default /api base path on vercel when API_BASE_PATH is empty', () => {
+  it("uses default /api base path on vercel when API_BASE_PATH is empty", () => {
     setBaseEnv();
-    process.env.VERCEL = '1';
-    process.env.CRON_SECRET = 'abc';
+    process.env.VERCEL = "1";
+    process.env.CRON_SECRET = "abc";
 
     const service = new ReportConfigService();
     const config = service.getRuntimeConfig();
 
-    if (config.chat.mode !== 'webhook') {
-      throw new Error('Expected webhook chat mode');
+    if (config.chat.mode !== "webhook") {
+      throw new Error("Expected webhook chat mode");
     }
-    expect(config.chat.reportUrl).toContain('/api/reports/retry');
+    expect(config.chat.reportUrl).toContain("/api/reports/retry");
 
     delete process.env.VERCEL;
   });
 
-  it('handles missing date-time parts in formatter output', () => {
+  it("handles missing date-time parts in formatter output", () => {
     setBaseEnv();
     const service = new ReportConfigService();
     const originalDateTimeFormat = Intl.DateTimeFormat;
 
-    Intl.DateTimeFormat = jest
-      .fn()
-      .mockImplementation(() => ({
-        formatToParts: () => [],
-      })) as unknown as Intl.DateTimeFormatConstructor;
+    Intl.DateTimeFormat = jest.fn().mockImplementation(() => ({
+      formatToParts: () => [],
+    })) as unknown as Intl.DateTimeFormatConstructor;
 
-    const text = service['formatDisplayDateTimeInTimeZone'](new Date('2026-05-09T00:00:00Z'), 'UTC');
-    expect(text).toBe(' , , ::  ()');
+    const text = service["formatDisplayDateTimeInTimeZone"](
+      new Date("2026-05-09T00:00:00Z"),
+      "UTC",
+    );
+    expect(text).toBe(" , , ::  ()");
 
     Intl.DateTimeFormat = originalDateTimeFormat;
   });
 
-  it('falls back to full raw author name when short name is empty', () => {
+  it("falls back to full raw author name when short name is empty", () => {
     setBaseEnv();
-    expect(normalizeAuthorName('()')).toBe('()');
+    expect(normalizeAuthorName("()")).toBe("()");
   });
 
-  it('formats day with ordinal suffix in reportDateTimeLabel', () => {
+  it("formats day with ordinal suffix in reportDateTimeLabel", () => {
     setBaseEnv();
     const service = new ReportConfigService();
 
-    const label1 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-01T10:00:00Z'), 'UTC');
-    const label2 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-02T10:00:00Z'), 'UTC');
-    const label3 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-03T10:00:00Z'), 'UTC');
-    const label11 = service['formatDisplayDateTimeInTimeZone'](new Date('2026-07-11T10:00:00Z'), 'UTC');
+    const label1 = service["formatDisplayDateTimeInTimeZone"](
+      new Date("2026-07-01T10:00:00Z"),
+      "UTC",
+    );
+    const label2 = service["formatDisplayDateTimeInTimeZone"](
+      new Date("2026-07-02T10:00:00Z"),
+      "UTC",
+    );
+    const label3 = service["formatDisplayDateTimeInTimeZone"](
+      new Date("2026-07-03T10:00:00Z"),
+      "UTC",
+    );
+    const label11 = service["formatDisplayDateTimeInTimeZone"](
+      new Date("2026-07-11T10:00:00Z"),
+      "UTC",
+    );
 
-    expect(label1).toContain('1st');
-    expect(label2).toContain('2nd');
-    expect(label3).toContain('3rd');
-    expect(label11).toContain('11th');
+    expect(label1).toContain("1st");
+    expect(label2).toContain("2nd");
+    expect(label3).toContain("3rd");
+    expect(label11).toContain("11th");
   });
 });

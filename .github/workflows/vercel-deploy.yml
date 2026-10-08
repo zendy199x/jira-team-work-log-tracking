@@ -26,7 +26,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NODE_VERSION: '24'
-  PNPM_VERSION: '11.13.0'
+  PNPM_VERSION: '12.10.1'
   VERCEL_CLI_VERSION: '48.12.1'
 
 jobs:
@@ -110,7 +110,11 @@ jobs:
       - name: Deploy Preview
         id: preview
         run: |
-          url=$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+          set -o pipefail
+          if ! url=$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | grep -Eo 'https://[^[:space:]]+' | tail -n 1); then
+            echo "Vercel CLI did not return a deployment URL." >&2
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -166,7 +170,11 @@ jobs:
       - name: Deploy Production
         id: production
         run: |
-          url=$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+          set -o pipefail
+          if ! url=$(npx --yes vercel@${{ env.VERCEL_CLI_VERSION }} deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} | grep -Eo 'https://[^[:space:]]+' | tail -n 1); then
+            echo "Vercel CLI did not return a deployment URL." >&2
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

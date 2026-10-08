@@ -21,7 +21,7 @@
     "google-chat",
     "vercel"
   ],
-  "packageManager": "pnpm@11.13.0",
+  "packageManager": "pnpm@12.10.1",
   "engines": {
     "node": ">=22 <27"
   },

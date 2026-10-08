@@ -1,20 +1,28 @@
-import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
-import type { JiraGatewayPort } from '../domain/report.ports';
+import { Injectable, Logger } from "@nestjs/common";
+import axios from "axios";
+import type { JiraGatewayPort } from "../domain/report.ports";
 import type {
-    Issue,
-    JiraConfig,
-    SearchResponse,
-    SprintSnapshot,
-    WorklogItem,
-    WorklogResponse,
-} from '../domain/report.types';
+  Issue,
+  JiraConfig,
+  SearchResponse,
+  SprintSnapshot,
+  WorklogItem,
+  WorklogResponse,
+} from "../domain/report.types";
 
-const JIRA_SEARCH_PATH = '/rest/api/3/search/jql';
-const JIRA_ISSUE_WORKLOG_PATH = '/rest/api/3/issue';
-const JIRA_BOARD_SPRINT_PATH = '/rest/agile/1.0/board';
-const SEARCH_FIELDS = ['worklog', 'created', 'parent', 'subtasks', 'issuetype', 'sprint', 'closedSprints'];
-const SEARCH_EXPAND = 'worklog';
+const JIRA_SEARCH_PATH = "/rest/api/3/search/jql";
+const JIRA_ISSUE_WORKLOG_PATH = "/rest/api/3/issue";
+const JIRA_BOARD_SPRINT_PATH = "/rest/agile/1.0/board";
+const SEARCH_FIELDS = [
+  "worklog",
+  "created",
+  "parent",
+  "subtasks",
+  "issuetype",
+  "sprint",
+  "closedSprints",
+];
+const SEARCH_EXPAND = "worklog";
 const PAGE_SIZE = 100;
 const WORKLOG_PAGE_SIZE = 100;
 
@@ -22,7 +30,10 @@ const WORKLOG_PAGE_SIZE = 100;
 export class JiraApiService implements JiraGatewayPort {
   private readonly logger = new Logger(JiraApiService.name);
 
-  async fetchActiveSprint(jira: JiraConfig, boardId: number): Promise<SprintSnapshot | null> {
+  async fetchActiveSprint(
+    jira: JiraConfig,
+    boardId: number,
+  ): Promise<SprintSnapshot | null> {
     const response = await axios.get<{
       values?: Array<{
         name?: string;
@@ -37,17 +48,17 @@ export class JiraApiService implements JiraGatewayPort {
           password: jira.jiraApiToken,
         },
         headers: {
-          Accept: 'application/json',
+          Accept: "application/json",
         },
         params: {
-          state: 'active',
+          state: "active",
           maxResults: 1,
         },
       },
     );
 
     const sprint = response.data?.values?.[0];
-    const sprintName = String(sprint?.name || '').trim();
+    const sprintName = String(sprint?.name || "").trim();
 
     if (!sprintName) {
       return null;
@@ -82,7 +93,9 @@ export class JiraApiService implements JiraGatewayPort {
         payload.nextPageToken = nextPageToken;
       }
 
-      const response = await axios.post<SearchResponse & { nextPageToken?: string }>(
+      const response = await axios.post<
+        SearchResponse & { nextPageToken?: string }
+      >(
         `${jira.jiraApiBaseUrl || jira.jiraDomain}${JIRA_SEARCH_PATH}`,
         payload,
         {
@@ -91,8 +104,8 @@ export class JiraApiService implements JiraGatewayPort {
             password: jira.jiraApiToken,
           },
           headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
+            Accept: "application/json",
+            "Content-Type": "application/json",
           },
         },
       );
@@ -132,12 +145,16 @@ export class JiraApiService implements JiraGatewayPort {
     issue: Issue,
     debugEnabled: boolean,
   ): Promise<Issue> {
-    const issueKey = String(issue?.key || '');
+    const issueKey = String(issue?.key || "");
     if (!issueKey) {
       return issue;
     }
 
-    const fullWorkLogs = await this.fetchAllWorkLogsForIssue(jira, issueKey, debugEnabled);
+    const fullWorkLogs = await this.fetchAllWorkLogsForIssue(
+      jira,
+      issueKey,
+      debugEnabled,
+    );
     const existingWorklogField = issue?.fields?.worklog || {};
     const worklog = {
       ...existingWorklogField,
@@ -149,12 +166,9 @@ export class JiraApiService implements JiraGatewayPort {
 
     return {
       ...issue,
-      fields: issue.fields
-        ? { ...issue.fields, worklog }
-        : { worklog },
+      fields: issue.fields ? { ...issue.fields, worklog } : { worklog },
     };
   }
-
 
   private async fetchAllWorkLogsForIssue(
     jira: JiraConfig,
@@ -174,7 +188,7 @@ export class JiraApiService implements JiraGatewayPort {
             password: jira.jiraApiToken,
           },
           headers: {
-            Accept: 'application/json',
+            Accept: "application/json",
           },
           params: {
             startAt,
@@ -208,17 +222,21 @@ export class JiraApiService implements JiraGatewayPort {
 
   private logJiraResponseDebug(page: number, jiraResponseData: unknown): void {
     const maxLength = 20000;
-    let serialized = '';
+    let serialized = "";
 
     try {
       serialized = JSON.stringify(jiraResponseData);
     } catch {
-      serialized = '[unserializable-jira-response]';
+      serialized = "[unserializable-jira-response]";
     }
 
     const isTruncated = serialized.length > maxLength;
-    const output = isTruncated ? `${serialized.slice(0, maxLength)}...[truncated]` : serialized;
+    const output = isTruncated
+      ? `${serialized.slice(0, maxLength)}...[truncated]`
+      : serialized;
 
-    this.logger.log(`Jira raw response page=${page}, length=${serialized.length}, payload=${output}`);
+    this.logger.log(
+      `Jira raw response page=${page}, length=${serialized.length}, payload=${output}`,
+    );
   }
 }

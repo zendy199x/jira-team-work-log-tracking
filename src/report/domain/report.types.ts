@@ -1,4 +1,3 @@
-
 export interface IssueFields {
   summary?: string;
   created?: string;
@@ -90,8 +89,8 @@ export interface AggregationDebugConfig {
 }
 
 export enum ChatMode {
-  WEBHOOK = 'webhook',
-  APP = 'app',
+  WEBHOOK = "webhook",
+  APP = "app",
 }
 
 export type ChatDeliveryConfig =

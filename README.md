@@ -178,6 +178,7 @@ Behavior notes:
 
 - REPORT_TIMEZONE has higher priority than TZ.
 - REPORT_DATE is useful for deterministic backfill/debug runs.
+- Retry links use APP_BASE_URL when set, then Vercel's project production URL, and only then the current deployment URL.
 - CRON_SECRET should be non-empty in production.
 - JIRA_BOARD_ID enables sprint summary in report header (shown only when Jira returns active sprint with name, start date, and end date).
 
